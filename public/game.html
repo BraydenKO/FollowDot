@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mouse Follower Dot</title>
+    <style>
+        body { margin: 0; overflow: hidden; height: 100vh; cursor: none; }
+        .user-dot, .random-dot { position: absolute; width: 20px; height: 20px; background-color: red; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); }
+        .random-dot { background-color: green; }
+
+    </style>
+</head>
+<body>
+    <div class="user-dot"></div>
+    <div class="random-dot"></div>
+
+    <script>
+        let game_type = "offset";
+        const userDot = document.querySelector('.user-dot');
+        const randomDot = document.querySelector('.random-dot');
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        let x = width / 2;
+        let y = height / 2;
+        let vx = (Math.random() - 0.5) * 2;
+        let vy = (Math.random() - 0.5) * 2;
+        const maxSpeed = 3;
+        const turnProbability = 0.05;
+        const maxTurnAngle = Math.PI / 4;
+        let currentMousemoveHandler;
+
+        let prevMouseX = null;
+        let prevMouseY = null;
+        let userDotX = width/2;
+        let userDotY = height/2;
+
+        function moveUser(e) {
+            userDot.style.left = `${e.clientX}px`;
+            userDot.style.top = `${e.clientY}px`;
+        }
+
+        function moveUserReverseXY(e) {
+            userDot.style.left = `${width - e.clientX}px`;
+            userDot.style.top = `${height - e.clientY}px`;
+        }
+
+        function moveUserOffsetRadians(e) {
+            const radians = Math.PI / 4;
+
+            if (prevMouseX === null || prevMouseY === null) {
+                prevMouseX = e.clientX;
+                prevMouseY = e.clientY;
+                userDot.style.left = `${userDotX}px`;
+                userDot.style.top = `${userDotY}px`;
+                return; // Don't move on the first frame
+            }
+
+            const deltaX = e.clientX - prevMouseX;
+            const deltaY = e.clientY - prevMouseY;
+            console.log("deltaX:", deltaX, "deltaY:", deltaY); // Log both deltaX and deltaY
+
+
+            // Rotate the delta
+            const rotatedDeltaX = deltaX * Math.cos(radians) - deltaY * Math.sin(radians);
+            const rotatedDeltaY = deltaX * Math.sin(radians) + deltaY * Math.cos(radians);
+
+            userDotX += rotatedDeltaX;
+            userDotY += rotatedDeltaY;
+        
+            userDotX = Math.max(0, Math.min(width, userDotX));
+            userDotY = Math.max(0, Math.min(height, userDotY));
+        
+            userDot.style.left = `${userDotX}px`;
+            userDot.style.top = `${userDotY}px`;
+        
+            prevMouseX = e.clientX;
+            prevMouseY = e.clientY;
+        }
+
+        function moveRandomDot() {
+            if (Math.random() < turnProbability) {
+                const turnAngle = (Math.random() * 2 - 1) * maxTurnAngle;
+                const currentAngle = Math.atan2(vy, vx);
+                const newAngle = currentAngle + turnAngle;
+                vx = Math.cos(newAngle) * maxSpeed;
+                vy = Math.sin(newAngle) * maxSpeed;
+            }
+
+            x += vx;
+            y += vy;
+            let rando_minX = width/8;
+            let rando_maxX = width - rando_minX;
+            let rando_minY = height/12;
+            let rando_maxY = height - rando_minY;
+            if (x < rando_minX) { x = rando_minX; vx = -vx; } else if (x > rando_maxX) { x = rando_maxX; vx = -vx; }
+            if (y < rando_minY) { y = rando_minY; vy = -vy; } else if (y > rando_maxY) { y = rando_maxY; vy = -vy; }
+
+            randomDot.style.left = `${x}px`;
+            randomDot.style.top = `${y}px`;
+        }
+
+        function setMousemoveHandler() {
+            if (currentMousemoveHandler) {
+                document.removeEventListener('mousemove', currentMousemoveHandler);
+            }
+
+            if (game_type === "normal") {
+                currentMousemoveHandler = moveUser;
+            } else if (game_type === "reverse") {
+                currentMousemoveHandler = moveUserReverseXY;
+            } else if (game_type === "offset"){
+                currentMousemoveHandler = moveUserOffsetRadians;
+            }
+
+            document.addEventListener('mousemove', currentMousemoveHandler);
+        }
+
+        function play() {
+            if(game_type === "done"){
+                window.location.href = 'done.html';;
+            }
+            moveRandomDot();
+            requestAnimationFrame(play);
+        }
+
+        randomDot.style.left = `${x}px`;
+        randomDot.style.top = `${y}px`;
+
+        setMousemoveHandler();
+        play();
+
+        setTimeout(() => {
+            game_type = "reverse";
+            setMousemoveHandler();
+            console.log("Game type changed to reverse");
+        }, 10000);
+        setTimeout(() => {
+            game_type = "offset";
+            setMousemoveHandler();
+            console.log("Game type changed to reverse");
+        }, 10000);
+        setTimeout(() => {
+            game_type = "done";
+            setMousemoveHandler();
+            console.log("Game type changed to reverse");
+        }, 10000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Main Menu</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: sans-serif;
+            flex-direction: column; /* Stack elements vertically */
+        }
+
+        #container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px; /* Add some padding around the content */
+            border: 1px solid #ccc; /* Optional: add a border */
+            border-radius: 8px; /* Optional: round the corners */
+            background-color: white; /* Optional: set a background color */
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .question {
+            margin-bottom: 10px;
+        }
+
+        .options {
+            display: flex;
+            gap: 10px; /* Space between options */
+            margin-bottom: 15px;
+        }
+
+        .options label {
+            cursor: pointer; /* Make labels clickable */
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #eee;
+        }
+
+        input[type="radio"] {
+            display: none; /* Hide the actual radio buttons */
+        }
+
+        input[type="radio"]:checked + label {
+            background-color: #4CAF50; /* Highlight selected option */
+            color: white;
+            border-color: #4CAF50;
+        }
+
+
+        #start-button {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            cursor: pointer;
+            border-radius: 5px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+            margin-top: 20px;
+        }
+
+        #title {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        #blurb{
+            text-align: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1 id="title">Mouse Follower Game</h1>
+
+        <div class="question">
+            1) What are you using to play this game?
+            <div class="options">
+                <input type="radio" id="trackpad" name="input_device" value="trackpad">
+                <label for="trackpad">Trackpad</label>
+
+                <input type="radio" id="mouse" name="input_device" value="mouse">
+                <label for="mouse">Mouse</label>
+
+                <input type="radio" id="controller" name="input_device" value="controller">
+                <label for="controller">Controller</label>
+            </div>
+        </div>
+
+        <div class="question">
+            2) Have you played this game before?
+            <div class="options">
+                <input type="radio" id="yes" name="played_before" value="yes">
+                <label for="yes">Yes</label>
+
+                <input type="radio" id="no" name="played_before" value="no">
+                <label for="no">No</label>
+            </div>
+        </div>
+        <div id = "blurb">
+            In this game, you will control a <span style="color: red;">red dot</span>. Your goal is to follow a moving <span style="color: green;">green dot</span> as closely as possible.
+        </div>
+        <div id = "blurb">
+            In the middle of your game, your controls may be changed, and this may happen multiple times.
+        </div>
+        <div id = "blurb">
+            Try to adjust as quickly as possible! (we recommend you use fullscreen)
+        </div>
+
+        <button id="start-button">Start Game</button>
+    </div>
+
+    <script>
+        const startButton = document.getElementById('start-button');
+
+        startButton.addEventListener('click', () => {
+            window.location.href = 'game.html';
+        });
+    </script>
+</body>
+</html>
