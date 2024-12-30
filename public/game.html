@@ -135,7 +135,7 @@
         async function uploadDotData() {
             try {
                 console.log("Uploading user positions...");
-                await setDoc(doc(db, "user-data", auth.currentUser.uid), {
+                await setDoc(doc(db, "user_data", auth.currentUser.uid), {
                     positions: userPositions,
                     followPositions: followPositions,
                     uid: auth.currentUser.uid,
