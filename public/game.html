@@ -150,7 +150,11 @@
 
         async function play() {
             if (game_type === "done") {
-                await uploadDotData();
+                if (playedBefore === "no") {
+                    await uploadDotData();
+                } else{
+                    console.log("User has played before. Not uploading data.");
+                }
                 window.location.href = 'done.html';
                 return;
             }
@@ -160,6 +164,8 @@
 
         randomDot.style.left = `${x}px`;
         randomDot.style.top = `${y}px`;
+
+        const playedBefore = localStorage.getItem("playedBefore");
 
         signInAnonymously(auth)
             .then(() => {
