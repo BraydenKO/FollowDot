@@ -1,15 +1,10 @@
 {
   "name": "websitetest",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "1.0.0",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "devDependencies": {
-    "vite": "^6.0.5"
+    "start": "firebase serve",
+    "deploy": "firebase deploy"
   },
   "dependencies": {
     "firebase": "^11.1.0"
