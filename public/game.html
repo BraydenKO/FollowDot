@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name=x"viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mouse Follower Dot</title>
     <style>
         body { margin: 0; overflow: hidden; height: 100vh; cursor: none; }
@@ -21,7 +21,7 @@
 
         const { db, auth } = initializeFirebase();
 
-        let game_type = "offset";
+        let game_type = "normal";
         const userDot = document.querySelector('.user-dot');
         const randomDot = document.querySelector('.random-dot');
         const width = window.innerWidth;
@@ -42,6 +42,7 @@
         let userDotY = height/2;
 
         let userPositions = [];
+        let followPositions = [];
 
         function moveUser(e) {
             userDot.style.left = `${e.clientX}px`;
@@ -74,13 +75,13 @@
 
             userDotX += rotatedDeltaX;
             userDotY += rotatedDeltaY;
-        
+
             userDotX = Math.max(0, Math.min(width, userDotX));
             userDotY = Math.max(0, Math.min(height, userDotY));
-        
+
             userDot.style.left = `${userDotX}px`;
             userDot.style.top = `${userDotY}px`;
-        
+
             prevMouseX = e.clientX;
             prevMouseY = e.clientY;
         }
@@ -96,9 +97,9 @@
 
             x += vx;
             y += vy;
-            let rando_minX = width/8;
+            let rando_minX = width / 8;
             let rando_maxX = width - rando_minX;
-            let rando_minY = height/12;
+            let rando_minY = height / 12;
             let rando_maxY = height - rando_minY;
             if (x < rando_minX) { x = rando_minX; vx = -vx; } else if (x > rando_maxX) { x = rando_maxX; vx = -vx; }
             if (y < rando_minY) { y = rando_minY; vy = -vy; } else if (y > rando_maxY) { y = rando_maxY; vy = -vy; }
@@ -116,18 +117,19 @@
                 currentMousemoveHandler = moveUser;
             } else if (game_type === "reverse") {
                 currentMousemoveHandler = moveUserReverseXY;
-            } else if (game_type === "offset"){
+            } else if (game_type === "offset") {
                 currentMousemoveHandler = moveUserOffsetRadians;
             }
 
             document.addEventListener('mousemove', currentMousemoveHandler);
         }
-        
-        async function uploadUserData() {
+
+        async function uploadDotData() {
             try {
                 console.log("Uploading user positions...");
                 await setDoc(doc(db, "user-data", auth.currentUser.uid), {
                     positions: userPositions,
+                    followPositions: followPositions,
                     uid: auth.currentUser.uid,
                     timestamp: Timestamp.fromDate(new Date())
                 });
@@ -139,8 +141,8 @@
         }
 
         async function play() {
-            if(game_type === "done"){
-                await uploadUserData();
+            if (game_type === "done") {
+                await uploadDotData();
                 window.location.href = 'done.html';
                 return;
             }
@@ -151,61 +153,39 @@
         randomDot.style.left = `${x}px`;
         randomDot.style.top = `${y}px`;
 
-        setMousemoveHandler();
-        play();
-
-        setTimeout(() => {
-            game_type = "reverse";
-            setMousemoveHandler();
-            console.log("Game type changed to reverse");
-        }, 2000);
-        setTimeout(() => {
-            game_type = "offset";
-            setMousemoveHandler();
-            console.log("Game type changed to offset");
-        }, 2000);
-        setTimeout(() => {
-            game_type = "done";
-            setMousemoveHandler();
-            console.log("Game type changed to done");
-        }, 2000);
-
         signInAnonymously(auth)
             .then(() => {
                 console.log("User signed in anonymously");
                 setInterval(() => {
-                    userPositions.push({ x: userDotX, y: userDotY, timestamp: Timestamp.fromDate(new Date()) });
+                    let time = Timestamp.fromDate(new Date());
+                    userPositions.push({ x: userDotX, y: userDotY, game_mode: game_type, timestamp: time });
+                    followPositions.push({ x: x, y: y, game_mode: game_type, timestamp: time });
                     console.log("Position tracked:", { x: userDotX, y: userDotY });
                 }, 500);
+
+
+                setMousemoveHandler();
+                play();
+
+                setTimeout(() => {
+                    game_type = "reverse";
+                    setMousemoveHandler();
+                    console.log("Game type changed to reverse");
+                }, 2000);
+                setTimeout(() => {
+                    game_type = "offset";
+                    setMousemoveHandler();
+                    console.log("Game type changed to offset");
+                }, 2000);
+                setTimeout(() => {
+                    game_type = "done";
+                    setMousemoveHandler();
+                    console.log("Game type changed to done");
+                }, 3000);
             })
             .catch((error) => {
                 console.error("Auth Error:", error.message);
             });
-
-        signInAnonymously(auth)
-          .then(() => {
-            setInterval(() => {
-                userPositions.push({ x: userDotX, y: userDotY, timestamp: Timestamp.fromDate(new Date()) });
-            }, 500);
-
-            window.addEventListener('beforeunload', async () => {
-                try {
-                    await setDoc(doc(db, "user-data", auth.currentUser.uid), {
-                        positions: userPositions,
-                        uid: auth.currentUser.uid,
-                        timestamp: Timestamp.fromDate(new Date())
-                    });
-                    console.log("User positions saved!");
-                } catch (error) {
-                    console.error("Firestore write error:", error.message);
-                    console.error("Error details:", error);
-                }
-            });
-          })
-          .catch((error) => {
-            console.error("Auth Error:", error.message);
-            console.error("Error details:", error);
-          });
     </script>
 </body>
 </html>
