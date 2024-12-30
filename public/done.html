@@ -38,5 +38,16 @@
     <div id = "container">
         <h1>Thank You for Playing!</h1>
     </div>
+    <script type ="module">
+        import { signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { initializeFirebase } from './firebaseConfig.js';
+        
+        const { db, auth } = initializeFirebase();
+
+        document.addEventListener('click', async () => {
+            await signOut(auth);
+            window.location.href = 'index.html';
+        });
+    </script>
 </body>
 </html>
