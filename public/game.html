@@ -22,6 +22,14 @@
         const { db, auth } = initializeFirebase();
 
         let game_type = "normal";
+
+        const game_type_lengths = {
+            "normal": 10_000, // ms
+            "reverse": 10_000,
+            "offset": 10_000
+        }
+
+
         const userDot = document.querySelector('.user-dot');
         const randomDot = document.querySelector('.random-dot');
         const width = window.innerWidth;
@@ -171,17 +179,17 @@
                     game_type = "reverse";
                     setMousemoveHandler();
                     console.log("Game type changed to reverse");
-                }, 2000);
+                }, game_type_lengths["normal"]);
                 setTimeout(() => {
                     game_type = "offset";
                     setMousemoveHandler();
                     console.log("Game type changed to offset");
-                }, 2000);
+                }, game_type_lengths["reverse"]);
                 setTimeout(() => {
                     game_type = "done";
                     setMousemoveHandler();
                     console.log("Game type changed to done");
-                }, 3000);
+                }, game_type_lengths["offset"]);
             })
             .catch((error) => {
                 console.error("Auth Error:", error.message);
