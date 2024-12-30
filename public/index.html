@@ -111,22 +111,11 @@
 
     <div id="app"></div>
     <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { initializeFirebase } from './firebaseConfig.js';
+        import {doc, setDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import {signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
       
-        const firebaseConfig = {
-          apiKey: "AIzaSyCcVGnf9yHmmlJuOmLxN08zEJlIeCYqsFg",
-          authDomain: "followdot-27974.firebaseapp.com",
-          projectId: "followdot-27974",
-          storageBucket: "followdot-27974.firebasestorage.app",
-          messagingSenderId: "966632075887",
-          appId: "1:966632075887:web:08cc3444d9d9b3c5bd539a"
-        };
-      
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+        const { db, auth } = initializeFirebase();
       
         signInAnonymously(auth)
           .then(() => {
@@ -136,7 +125,7 @@
       
               if (inputDevice && playedBefore) {
                 try {
-                  await addDoc(collection(db, "game_inputs"), {
+                  await setDoc(doc(db, "game_inputs", auth.currentUser.uid), {
                     inputDevice,
                     playedBefore,
                     uid: auth.currentUser.uid,
@@ -146,6 +135,7 @@
                   window.location.href = 'game.html';
                 } catch (error) {
                   console.error("Firestore write error:", error.message);
+                  console.error("Error details:", error);
                   alert("Error saving data. Please try again.");
                 }
               } else {
@@ -155,6 +145,7 @@
           })
           .catch((error) => {
             console.error("Auth Error:", error.message);
+            console.error("Error details:", error);
           });
       </script>
       

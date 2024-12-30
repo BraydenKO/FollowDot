@@ -2,20 +2,25 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name=x"viewport" content="width=device-width, initial-scale=1.0">
     <title>Mouse Follower Dot</title>
     <style>
         body { margin: 0; overflow: hidden; height: 100vh; cursor: none; }
         .user-dot, .random-dot { position: absolute; width: 20px; height: 20px; background-color: red; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); }
         .random-dot { background-color: green; }
-
     </style>
 </head>
 <body>
     <div class="user-dot"></div>
     <div class="random-dot"></div>
 
-    <script>
+    <script type="module">
+        import { initializeFirebase } from './firebaseConfig.js';
+        import { doc, setDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        const { db, auth } = initializeFirebase();
+
         let game_type = "offset";
         const userDot = document.querySelector('.user-dot');
         const randomDot = document.querySelector('.random-dot');
@@ -35,6 +40,8 @@
         let prevMouseY = null;
         let userDotX = width/2;
         let userDotY = height/2;
+
+        let userPositions = [];
 
         function moveUser(e) {
             userDot.style.left = `${e.clientX}px`;
@@ -60,7 +67,6 @@
             const deltaX = e.clientX - prevMouseX;
             const deltaY = e.clientY - prevMouseY;
             console.log("deltaX:", deltaX, "deltaY:", deltaY); // Log both deltaX and deltaY
-
 
             // Rotate the delta
             const rotatedDeltaX = deltaX * Math.cos(radians) - deltaY * Math.sin(radians);
@@ -116,10 +122,27 @@
 
             document.addEventListener('mousemove', currentMousemoveHandler);
         }
+        
+        async function uploadUserData() {
+            try {
+                console.log("Uploading user positions...");
+                await setDoc(doc(db, "user-data", auth.currentUser.uid), {
+                    positions: userPositions,
+                    uid: auth.currentUser.uid,
+                    timestamp: Timestamp.fromDate(new Date())
+                });
+                console.log("User positions saved!");
+            } catch (error) {
+                console.error("Firestore write error:", error.message);
+                console.error("Error details:", error);
+            }
+        }
 
-        function play() {
+        async function play() {
             if(game_type === "done"){
-                window.location.href = 'done.html';;
+                await uploadUserData();
+                window.location.href = 'done.html';
+                return;
             }
             moveRandomDot();
             requestAnimationFrame(play);
@@ -135,17 +158,54 @@
             game_type = "reverse";
             setMousemoveHandler();
             console.log("Game type changed to reverse");
-        }, 10000);
+        }, 2000);
         setTimeout(() => {
             game_type = "offset";
             setMousemoveHandler();
-            console.log("Game type changed to reverse");
-        }, 10000);
+            console.log("Game type changed to offset");
+        }, 2000);
         setTimeout(() => {
             game_type = "done";
             setMousemoveHandler();
-            console.log("Game type changed to reverse");
-        }, 10000);
+            console.log("Game type changed to done");
+        }, 2000);
+
+        signInAnonymously(auth)
+            .then(() => {
+                console.log("User signed in anonymously");
+                setInterval(() => {
+                    userPositions.push({ x: userDotX, y: userDotY, timestamp: Timestamp.fromDate(new Date()) });
+                    console.log("Position tracked:", { x: userDotX, y: userDotY });
+                }, 500);
+            })
+            .catch((error) => {
+                console.error("Auth Error:", error.message);
+            });
+
+        signInAnonymously(auth)
+          .then(() => {
+            setInterval(() => {
+                userPositions.push({ x: userDotX, y: userDotY, timestamp: Timestamp.fromDate(new Date()) });
+            }, 500);
+
+            window.addEventListener('beforeunload', async () => {
+                try {
+                    await setDoc(doc(db, "user-data", auth.currentUser.uid), {
+                        positions: userPositions,
+                        uid: auth.currentUser.uid,
+                        timestamp: Timestamp.fromDate(new Date())
+                    });
+                    console.log("User positions saved!");
+                } catch (error) {
+                    console.error("Firestore write error:", error.message);
+                    console.error("Error details:", error);
+                }
+            });
+          })
+          .catch((error) => {
+            console.error("Auth Error:", error.message);
+            console.error("Error details:", error);
+          });
     </script>
 </body>
 </html>
