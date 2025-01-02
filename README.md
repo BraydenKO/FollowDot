@@ -8,4 +8,4 @@ as quickly as possible.
 The first mode is "normal". Normal mouse/trackpad/etc. movements will translate to the expected movements of the red dot. In the other modes, 
 this is not necessarily so.
 
-Do note, that your data (the questions you answer before the game and where your red dot is) is collected and saved.
+Do note, that your data (the questions you answer before the game and where your red dot is) is collected and saved to a Firestore database.
