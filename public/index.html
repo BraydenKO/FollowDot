@@ -142,26 +142,22 @@
             localStorage.setItem("playedBefore", playedBefore);
 
             if (inputDevice && playedBefore && age && handedness && gender) { // If all options are selected
-              if (playedBefore === "no") { // If the user has not played before upload the data
-                try {
-                  await setDoc(doc(db, "game_inputs", auth.currentUser.uid), {
-                    inputDevice,
-                    playedBefore,
-                    age,
-                    handedness,
-                    gender,
-                    uid: auth.currentUser.uid,
-                    timestamp: Timestamp.fromDate(new Date())
-                  });
-                  console.log("Data saved!");
-                  window.location.href = 'game.html';
-                } catch (error) {
-                  console.error("Firestore write error:", error.message);
-                  console.error("Error details:", error);
-                  alert("Error saving data. Please try again.");
-                }
-              } else { // Let the user play but don't upload data
+              try {
+                await setDoc(doc(db, "game_inputs", auth.currentUser.uid), {
+                  inputDevice,
+                  playedBefore,
+                  age,
+                  handedness,
+                  gender,
+                  uid: auth.currentUser.uid,
+                  timestamp: Timestamp.fromDate(new Date())
+                });
+                console.log("Data saved!");
                 window.location.href = 'game.html';
+              } catch (error) {
+                console.error("Firestore write error:", error.message);
+                console.error("Error details:", error);
+                alert("Error saving data. Please try again.");
               }
             } else {
               alert("Please answer all questions.");
