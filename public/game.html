@@ -21,7 +21,7 @@
             // Clear the flag to prevent re-entry
             sessionStorage.removeItem('gameStarted');
         }
-        
+
         import { initializeFirebase } from './firebaseConfig.js';
         import { doc, setDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
@@ -45,7 +45,7 @@
         let y = height / 2;
         let vx = (Math.random() - 0.5) * 2;
         let vy = (Math.random() - 0.5) * 2;
-        const maxSpeed = 3;
+        const speeds = [3,4,5];
         const turnProbability = 0.05;
         const maxTurnAngle = Math.PI / 4;
         let currentMousemoveHandler;
@@ -146,8 +146,9 @@
                 const turnAngle = (Math.random() * 2 - 1) * maxTurnAngle;
                 const currentAngle = Math.atan2(vy, vx);
                 const newAngle = currentAngle + turnAngle;
-                vx = Math.cos(newAngle) * maxSpeed;
-                vy = Math.sin(newAngle) * maxSpeed;
+                const speed = speeds[Math.floor(Math.random() * speeds.length)];
+                vx = Math.cos(newAngle) * speed;
+                vy = Math.sin(newAngle) * speed;
             }
 
             x += vx;
