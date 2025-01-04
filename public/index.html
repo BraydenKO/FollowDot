@@ -130,13 +130,13 @@
 
       const { db, auth } = initializeFirebase();
 
-      async function uploadGameInput(){
+      async function uploadGameInput(inputDevice, playedBefore, age, handedness, gender){
         await setDoc(doc(db, "game_inputs", auth.currentUser.uid), {
-          inputDevice,
-          playedBefore,
-          age,
-          handedness,
-          gender,
+          inputDevice: inputDevice,
+          playedBefore: playedBefore,
+          age: age,
+          handedness: handedness,
+          gender: gender,
           uid: auth.currentUser.uid,
           timestamp: Timestamp.fromDate(new Date())
         });
@@ -153,9 +153,9 @@
 
             if (inputDevice && playedBefore && age && handedness && gender) { // If all options are selected
               try {
-                //uploadGameInput();
+                await uploadGameInput(inputDevice, playedBefore, age, handedness, gender);
                 console.log("Data saved!");
-                
+
                 sessionStorage.setItem('gameStarted', 'true');
                 window.location.href = 'game.html';
               } catch (error) {
