@@ -33,20 +33,100 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div id = "container">
+    <div id="container">
         <h1>Thank You for Playing!</h1>
+        <canvas id="resultsChart" width="400" height="200"></canvas>
+        <canvas id="distanceChart" width="400" height="200"></canvas>
     </div>
-    <script type ="module">
+    <script type="module">
         import { signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { initializeFirebase } from './firebaseConfig.js';
         
         const { db, auth } = initializeFirebase();
 
-        document.addEventListener('click', async () => {
-            await signOut(auth);
-            window.location.href = 'index.html';
+        document.addEventListener('click', async (event) => {
+            event.preventDefault();
+            const userConfirmed = confirm("Are you sure you want to exit?");
+            if (userConfirmed) {
+                await signOut(auth);
+                window.location.href = 'index.html';
+            }
+        });
+
+        // Parse the sectionSizes, percentages, and distances from localStorage
+        const sectionSizes = JSON.parse(localStorage.getItem('sectionSizes'));
+        const percentages = JSON.parse(localStorage.getItem('percentages'));
+        const distances = JSON.parse(localStorage.getItem('distances'));
+
+        // Render the bar chart
+        const ctxBar = document.getElementById('resultsChart').getContext('2d');
+        new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: sectionSizes,
+                datasets: [{
+                    label: 'Percentages',
+                    data: percentages,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: ['Intervals of Distance to the Green Dot (px)',
+                                   'For reference, the dots have a diameter of 20px']
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Percentage of time in this interval (%)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Render the line chart
+        const ctxLine = document.getElementById('distanceChart').getContext('2d');
+        new Chart(ctxLine, {
+            type: 'line',
+            data: {
+                labels: distances.map((_, index) => index + 1), // Use the index as the label
+                datasets: [{
+                    label: 'Distances Over Time',
+                    data: distances,
+                    backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                    borderColor: 'rgba(153, 102, 255, 1)',
+                    borderWidth: 1,
+                    fill: false
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Time (~100 ms)'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Distance'
+                        }
+                    }
+                }
+            }
         });
     </script>
 </body>

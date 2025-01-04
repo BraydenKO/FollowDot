@@ -24,11 +24,10 @@
         let game_type = "normal";
 
         const game_type_lengths = {
-            "normal": 15_000, // ms
-            "reverse": 15_000,
-            "offset": 15_000
+            "normal": 5_000, // ms
+            "reverse": 5_000,
+            "offset": 5_000
         }
-
 
         const userDot = document.querySelector('.user-dot');
         const randomDot = document.querySelector('.random-dot');
@@ -48,18 +47,24 @@
         let prevMouseY = null;
         let userDotX = width/2;
         let userDotY = height/2;
+        let dist = null;
 
         let userPositions = [];
         let followPositions = [];
+        let distances = [];
 
         function moveUser(e) {
-            userDot.style.left = `${e.clientX}px`;
-            userDot.style.top = `${e.clientY}px`;
+            userDotX = e.clientX;
+            userDotY = e.clientY;
+            userDot.style.left = `${userDotX}px`;
+            userDot.style.top = `${userDotY}px`;
         }
 
         function moveUserReverseXY(e) {
-            userDot.style.left = `${width - e.clientX}px`;
-            userDot.style.top = `${height - e.clientY}px`;
+            userDotX = width - e.clientX;
+            userDotY = height - e.clientY;
+            userDot.style.left = `${userDotX}px`;
+            userDot.style.top = `${userDotY}px`;
         }
 
         function moveUserOffsetRadians(e) {
@@ -75,7 +80,6 @@
 
             const deltaX = e.clientX - prevMouseX;
             const deltaY = e.clientY - prevMouseY;
-            console.log("deltaX:", deltaX, "deltaY:", deltaY); // Log both deltaX and deltaY
 
             // Rotate the delta
             const rotatedDeltaX = deltaX * Math.cos(radians) - deltaY * Math.sin(radians);
@@ -92,6 +96,42 @@
 
             prevMouseX = e.clientX;
             prevMouseY = e.clientY;
+        }
+
+        function distanceToDot(){
+            dist = Math.sqrt((userDotX - x) ** 2 + (userDotY - y) ** 2)
+            distances.push(dist);
+        }
+
+        function calculateDistancePercentages() {
+            const maxDistance = Math.max(...distances);
+            const sectionSizes = {
+                0: Math.round(1  * maxDistance / 15),
+                1: Math.round(3  * maxDistance / 15),
+                2: Math.round(7  * maxDistance / 15),
+                3: Math.round(11 * maxDistance / 15),
+                4: Math.round(15 * maxDistance / 15)
+            };
+            const sections = [0, 0, 0, 0, 0];
+
+            distances.forEach(distance => {
+                if (distance < sectionSizes[0]) {
+                    sections[0]++;
+                } else if (distance < sectionSizes[1]) {
+                    sections[1]++;
+                } else if (distance < sectionSizes[2]) {
+                    sections[2]++;
+                } else if (distance < sectionSizes[3]) {
+                    sections[3]++;
+                } else {
+                    sections[4]++;
+                }
+            });
+
+            const percentages = sections.map(count => (count / distances.length) * 100);
+            console.log("Section Sizes:", sectionSizes);
+            console.log("Distance Percentages:", percentages);
+            return { sectionSizes, percentages };
         }
 
         function moveRandomDot() {
@@ -138,6 +178,7 @@
                 await setDoc(doc(db, "user_data", auth.currentUser.uid), {
                     positions: userPositions,
                     followPositions: followPositions,
+                    distances: distances, // Include distances in the upload
                     uid: auth.currentUser.uid,
                     timestamp: Timestamp.fromDate(new Date())
                 });
@@ -150,12 +191,11 @@
 
         async function play() {
             if (game_type === "done") {
-                if (playedBefore === "no") {
-                    await uploadDotData();
-                } else{
-                    console.log("User has played before. Not uploading data.");
-                }
-                window.location.href = 'done.html';
+                const { sectionSizes, percentages } = calculateDistancePercentages();
+                localStorage.setItem('sectionSizes', JSON.stringify(Object.values(sectionSizes)));
+                localStorage.setItem('percentages', JSON.stringify(percentages));
+                localStorage.setItem('distances', JSON.stringify(distances));
+                window.location.href = `done.html`;
                 return;
             }
             moveRandomDot();
@@ -165,8 +205,6 @@
         randomDot.style.left = `${x}px`;
         randomDot.style.top = `${y}px`;
 
-        const playedBefore = localStorage.getItem("playedBefore");
-
         signInAnonymously(auth)
             .then(() => {
                 console.log("User signed in anonymously");
@@ -174,9 +212,8 @@
                     let time = Timestamp.fromDate(new Date());
                     userPositions.push({ x: userDotX, y: userDotY, game_mode: game_type, timestamp: time });
                     followPositions.push({ x: x, y: y, game_mode: game_type, timestamp: time });
-                    console.log("Position tracked:", { x: userDotX, y: userDotY });
-                }, 500);
-
+                    distanceToDot();
+                }, 100);
 
                 setMousemoveHandler();
                 play();

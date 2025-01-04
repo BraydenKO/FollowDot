@@ -130,6 +130,18 @@
 
       const { db, auth } = initializeFirebase();
 
+      async function uploadGameInput(){
+        await setDoc(doc(db, "game_inputs", auth.currentUser.uid), {
+          inputDevice,
+          playedBefore,
+          age,
+          handedness,
+          gender,
+          uid: auth.currentUser.uid,
+          timestamp: Timestamp.fromDate(new Date())
+        });
+      }
+
       signInAnonymously(auth)
         .then(() => {
           document.getElementById('start-button').addEventListener('click', async () => {
@@ -139,19 +151,9 @@
             let handedness = document.getElementById('handedness')?.value;
             let gender = document.getElementById('gender')?.value;
 
-            localStorage.setItem("playedBefore", playedBefore);
-
             if (inputDevice && playedBefore && age && handedness && gender) { // If all options are selected
               try {
-                await setDoc(doc(db, "game_inputs", auth.currentUser.uid), {
-                  inputDevice,
-                  playedBefore,
-                  age,
-                  handedness,
-                  gender,
-                  uid: auth.currentUser.uid,
-                  timestamp: Timestamp.fromDate(new Date())
-                });
+                //uploadGameInput();
                 console.log("Data saved!");
                 window.location.href = 'game.html';
               } catch (error) {
