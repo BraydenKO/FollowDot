@@ -155,6 +155,8 @@
               try {
                 //uploadGameInput();
                 console.log("Data saved!");
+                
+                sessionStorage.setItem('gameStarted', 'true');
                 window.location.href = 'game.html';
               } catch (error) {
                 console.error("Firestore write error:", error.message);
