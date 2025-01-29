@@ -32,8 +32,9 @@
 
         let game_type = "normal";
 
+        let do_upload = false
         const game_type_lengths = {
-            "normal": 15_000, // ms
+            "normal": 1_000, // ms
             "reverse": 15_000,
         }
 
@@ -212,7 +213,7 @@
                 localStorage.setItem('sectionSizes', JSON.stringify(Object.values(sectionSizes)));
                 localStorage.setItem('percentages', JSON.stringify(percentages));
                 localStorage.setItem('distances', JSON.stringify(distances));
-                await uploadDotData(userPositions, followPositions, distances);
+                if (do_upload){ uploadDotData(userPositions, followPositions, distances);}
                 window.location.href = `done.html`;
                 return;
             }
