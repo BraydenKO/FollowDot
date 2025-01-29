@@ -33,7 +33,6 @@
         const game_type_lengths = {
             "normal": 15_000, // ms
             "reverse": 15_000,
-            "offset": 15_000
         }
 
         const userDot = document.querySelector('.user-dot');
@@ -203,7 +202,7 @@
                 localStorage.setItem('sectionSizes', JSON.stringify(Object.values(sectionSizes)));
                 localStorage.setItem('percentages', JSON.stringify(percentages));
                 localStorage.setItem('distances', JSON.stringify(distances));
-                await uploadDotData(userPositions, followPositions, distances);
+                //await uploadDotData(userPositions, followPositions, distances);
                 window.location.href = `done.html`;
                 return;
             }
@@ -218,7 +217,8 @@
             .then(() => {
                 console.log("User signed in anonymously");
                 setInterval(() => {
-                    let time = Timestamp.fromDate(new Date());
+                    let time = Timestamp.now();
+                    console.log("Time:", time);
                     userPositions.push({ x: userDotX, y: userDotY, game_mode: game_type, timestamp: time });
                     followPositions.push({ x: x, y: y, game_mode: game_type, timestamp: time });
                     distanceToDot();
@@ -232,16 +232,21 @@
                     setMousemoveHandler();
                     console.log("Game type changed to reverse");
                 }, game_type_lengths["normal"]);
-                setTimeout(() => {
+                /*setTimeout(() => {
                     game_type = "offset";
                     setMousemoveHandler();
                     console.log("Game type changed to offset");
+                }, game_type_lengths["reverse"] + game_type_lengths["normal"]);*/
+                setTimeout(() => {
+                    game_type = "normal";
+                    setMousemoveHandler();
+                    console.log("Game type changed to done");
                 }, game_type_lengths["reverse"] + game_type_lengths["normal"]);
                 setTimeout(() => {
                     game_type = "done";
                     setMousemoveHandler();
                     console.log("Game type changed to done");
-                }, game_type_lengths["offset"] + game_type_lengths["reverse"] + game_type_lengths["normal"]);
+                }, game_type_lengths["reverse"] + 2*game_type_lengths["normal"]);
             })
             .catch((error) => {
                 console.error("Auth Error:", error.message);
