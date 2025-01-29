@@ -8,13 +8,56 @@
         body { margin: 0; overflow: hidden; height: 100vh; cursor: none; }
         .user-dot, .random-dot { position: absolute; width: 20px; height: 20px; background-color: red; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); }
         .random-dot { background-color: green; }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none; /* Initially hidden */
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            cursor: auto; /* Ensure cursor is visible */
+        }
+
+        /* Modal box */
+        .modal {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            width: 300px;
+            position: relative;
+        }
+
+        /* Centered OK button */
+        .ok-button {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            background: blue;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <div class="user-dot"></div>
     <div class="random-dot"></div>
+    <div class="modal-overlay" id="customAlert">
+        <div class="modal">
+            <p>Your controls have been switched! Try to adapt quickly. Click OK to continue.</p>
+            <button class="ok-button" id="okButton">OK</button>
+        </div>
+    </div>
 
     <script type="module">
+        document.getElementById('customAlert').style.display = 'none';
         //TODO Add COMMENTS!!!
 
         if (sessionStorage.getItem('gameStarted') !== 'true') {
@@ -34,7 +77,7 @@
 
         let do_upload = false
         const game_type_lengths = {
-            "normal": 1_000, // ms
+            "normal": 3_000, // ms
             "reverse": 15_000,
         }
 
@@ -220,7 +263,13 @@
             moveRandomDot();
             animframe = requestAnimationFrame(play);
         }
+        function showCursor() {
+            document.body.style.cursor = "auto"; // Ensure cursor is visible
+        }
         
+        function hideCursor() {
+            document.body.style.cursor = "none"; // Hide cursor when the game resumes
+        }
         function pauseGame(){
             cancelAnimationFrame(animframe);
             document.removeEventListener('mousemove', currentMousemoveHandler);
@@ -229,13 +278,33 @@
             setMousemoveHandler();
             play();
         }
+        // Function to show the alert
+// Function to show the alert
+function showAlert(message, callback) {
+    const modal = document.getElementById('customAlert');
+    modal.querySelector("p").innerText = message; // Set custom message
+    modal.style.display = 'flex';
+    showCursor();
 
+    // Ensure clicking "OK" closes the modal and resumes the game
+    document.getElementById("okButton").onclick = function() {
+        closeAlert();
+        if (callback) callback(); // Run the next step only after closing
+    };
+}
+
+// Function to close the alert and resume game
+function closeAlert() {
+    document.getElementById('customAlert').style.display = 'none';
+    hideCursor();
+    resumeGame(); // Ensure the game resumes after closing
+}
 
         randomDot.style.left = `${x}px`;
         randomDot.style.top = `${y}px`;
 
         
-
+        
         signInAnonymously(auth)
             .then(() => {
                 console.log("User signed in anonymously");
@@ -251,29 +320,29 @@
                 play();
                 
                 // Nested setTimeouts. Might want to change later w/ recursion?
-
                 setTimeout(() => {
                     pauseGame();
-                    alert("Your controls have been switched! Try to adapt quickly. Click OK to continue.");
                     game_type = "reverse";
-                    resumeGame();
-                    
-                    console.log("Game type changed to reverse");
-                    setTimeout(() => {
-                        pauseGame();
-                        alert("Your controls have been switched again! Try to adapt quickly. Click OK to continue.");
+                    showAlert("Your controls have been switched! Try to adapt quickly. Click OK to continue.", () => {
                         
-                        game_type = "normal";
-                        resumeGame();
-                        
-                        console.log("Game type changed to normal");
+                        console.log("Game type changed to reverse");
+        
                         setTimeout(() => {
-                            game_type = "done";
-                            setMousemoveHandler();
-                            console.log("Game type changed to done");
-                        }, game_type_lengths["normal"]);
-                    }, game_type_lengths["reverse"]);
-                    
+                            pauseGame();
+                            game_type = "normal";
+                            showAlert("Your controls have been switched again! Try to adapt quickly. Click OK to continue.", () => {
+                                
+                                console.log("Game type changed to normal");
+                                resumeGame();
+        
+                                setTimeout(() => {
+                                    game_type = "done";
+                                    setMousemoveHandler();
+                                    console.log("Game type changed to done");
+                                }, game_type_lengths["normal"]);
+                            });
+                        }, game_type_lengths["reverse"]);
+                    });
                 }, game_type_lengths["normal"]);
                 /*setTimeout(() => {
                     game_type = "offset";
