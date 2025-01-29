@@ -15,6 +15,8 @@
     <div class="random-dot"></div>
 
     <script type="module">
+        //TODO Add COMMENTS!!!
+
         if (sessionStorage.getItem('gameStarted') !== 'true') {
             window.location.href = 'index.html';
         } else {
@@ -31,8 +33,8 @@
         let game_type = "normal";
 
         const game_type_lengths = {
-            "normal": 15_000, // ms
-            "reverse": 15_000,
+            "normal": 1_000, // ms
+            "reverse": 2_000,
         }
 
         const userDot = document.querySelector('.user-dot');
@@ -58,6 +60,8 @@
         let userPositions = [];
         let followPositions = [];
         let distances = [];
+
+        let animframe;
 
         function moveUser(e) {
             userDotX = e.clientX;
@@ -207,8 +211,18 @@
                 return;
             }
             moveRandomDot();
-            requestAnimationFrame(play);
+            animframe = requestAnimationFrame(play);
         }
+        
+        function pauseGame(){
+            cancelAnimationFrame(animframe);
+            document.removeEventListener('mousemove', currentMousemoveHandler);
+        }
+        function resumeGame() {
+            setMousemoveHandler();
+            play();
+        }
+
 
         randomDot.style.left = `${x}px`;
         randomDot.style.top = `${y}px`;
@@ -227,26 +241,37 @@
                 setMousemoveHandler();
                 play();
 
+                // Nested setTimeouts. Might want to change later?
+
                 setTimeout(() => {
+                    pauseGame();
+                    alert("Your controls have been switched! Try to adapt quickly. Click OK to continue.");
                     game_type = "reverse";
-                    setMousemoveHandler();
+                    resumeGame();
+
                     console.log("Game type changed to reverse");
+                    setTimeout(() => {
+                        pauseGame();
+                        alert("Your controls have been switched again! Try to adapt quickly. Click OK to continue.");
+                        game_type = "normal";
+                        resumeGame();
+                        
+                        console.log("Game type changed to normal");
+                        setTimeout(() => {
+                            game_type = "done";
+                            setMousemoveHandler();
+                            console.log("Game type changed to done");
+                        }, game_type_lengths["normal"]);
+                    }, game_type_lengths["normal"]);
+                    
                 }, game_type_lengths["normal"]);
                 /*setTimeout(() => {
                     game_type = "offset";
                     setMousemoveHandler();
                     console.log("Game type changed to offset");
                 }, game_type_lengths["reverse"] + game_type_lengths["normal"]);*/
-                setTimeout(() => {
-                    game_type = "normal";
-                    setMousemoveHandler();
-                    console.log("Game type changed to done");
-                }, game_type_lengths["reverse"] + game_type_lengths["normal"]);
-                setTimeout(() => {
-                    game_type = "done";
-                    setMousemoveHandler();
-                    console.log("Game type changed to done");
-                }, game_type_lengths["reverse"] + 2*game_type_lengths["normal"]);
+                
+                
             })
             .catch((error) => {
                 console.error("Auth Error:", error.message);
