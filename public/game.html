@@ -33,8 +33,8 @@
         let game_type = "normal";
 
         const game_type_lengths = {
-            "normal": 1_000, // ms
-            "reverse": 2_000,
+            "normal": 15_000, // ms
+            "reverse": 15_000,
         }
 
         const userDot = document.querySelector('.user-dot');
@@ -71,8 +71,9 @@
         }
 
         function moveUserReverseXY(e) {
-            userDotX = width - e.clientX;
-            userDotY = height - e.clientY;
+            
+            userDotX -= e.movementX;
+            userDotY -= e.movementY;
             userDot.style.left = `${userDotX}px`;
             userDot.style.top = `${userDotY}px`;
         }
@@ -175,6 +176,11 @@
             if (game_type === "normal") {
                 currentMousemoveHandler = moveUser;
             } else if (game_type === "reverse") {
+                userDotX = width/2;
+                userDotY = height/2;
+                userDot.style.left = `${userDotX}px`;
+                userDot.style.top = `${userDotY}px`;
+
                 currentMousemoveHandler = moveUserReverseXY;
             } else if (game_type === "offset") {
                 currentMousemoveHandler = moveUserOffsetRadians;
@@ -206,7 +212,7 @@
                 localStorage.setItem('sectionSizes', JSON.stringify(Object.values(sectionSizes)));
                 localStorage.setItem('percentages', JSON.stringify(percentages));
                 localStorage.setItem('distances', JSON.stringify(distances));
-                //await uploadDotData(userPositions, followPositions, distances);
+                await uploadDotData(userPositions, followPositions, distances);
                 window.location.href = `done.html`;
                 return;
             }
@@ -227,6 +233,8 @@
         randomDot.style.left = `${x}px`;
         randomDot.style.top = `${y}px`;
 
+        
+
         signInAnonymously(auth)
             .then(() => {
                 console.log("User signed in anonymously");
@@ -240,19 +248,20 @@
 
                 setMousemoveHandler();
                 play();
-
-                // Nested setTimeouts. Might want to change later?
+                
+                // Nested setTimeouts. Might want to change later w/ recursion?
 
                 setTimeout(() => {
                     pauseGame();
                     alert("Your controls have been switched! Try to adapt quickly. Click OK to continue.");
                     game_type = "reverse";
                     resumeGame();
-
+                    
                     console.log("Game type changed to reverse");
                     setTimeout(() => {
                         pauseGame();
                         alert("Your controls have been switched again! Try to adapt quickly. Click OK to continue.");
+                        
                         game_type = "normal";
                         resumeGame();
                         
@@ -262,7 +271,7 @@
                             setMousemoveHandler();
                             console.log("Game type changed to done");
                         }, game_type_lengths["normal"]);
-                    }, game_type_lengths["normal"]);
+                    }, game_type_lengths["reverse"]);
                     
                 }, game_type_lengths["normal"]);
                 /*setTimeout(() => {
