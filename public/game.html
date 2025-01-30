@@ -6,7 +6,13 @@
     <title>Mouse Follower Dot</title>
     <style>
         body { margin: 0; overflow: hidden; height: 100vh; cursor: none; }
-        .user-dot, .random-dot { position: absolute; width: 20px; height: 20px; background-color: red; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); }
+        .user-dot, .random-dot { position: absolute; 
+                                width: 20px; height: 20px; 
+                                background-color: red; 
+                                border-radius: 50%; 
+                                pointer-events: none; 
+                                transform: translate(-50%, -50%); 
+                                border: 2px solid black;; }
         .random-dot { background-color: green; }
         .modal-overlay {
             position: fixed;
@@ -99,7 +105,7 @@
         let prevMouseY = null;
         let userDotX = width/2;
         let userDotY = height/2;
-        let dist = null;
+        let dist;
 
         let userPositions = [];
         let followPositions = [];
@@ -154,9 +160,11 @@
             prevMouseY = e.clientY;
         }
 
-        function distanceToDot(){
+        function distanceToDot(save){
             dist = Math.sqrt((userDotX - x) ** 2 + (userDotY - y) ** 2)
-            distances.push(dist);
+            if (save){distances.push(dist);}
+            return dist;
+    
         }
 
         function calculateDistancePercentages() {
@@ -259,6 +267,12 @@
                 return;
             }
             moveRandomDot();
+            if (distanceToDot() < 100){
+                userDot.style.backgroundColor = 'yellow';
+            }
+            else{
+                userDot.style.backgroundColor = 'red';
+            }
             animframe = requestAnimationFrame(play);
         }
 
@@ -268,7 +282,7 @@
                 console.log("Time:", time);
                 userPositions.push({ x: userDotX, y: userDotY, game_mode: game_type, timestamp: time });
                 followPositions.push({ x: x, y: y, game_mode: game_type, timestamp: time });
-                distanceToDot();
+                distances.push(dist);
             }, 100);
             return intervalId;
         }
