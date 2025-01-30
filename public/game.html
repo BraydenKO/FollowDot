@@ -57,7 +57,7 @@
     </div>
 
     <script type="module">
-        document.getElementById('customAlert').style.display = 'none';
+        //document.getElementById('customAlert').style.display = 'none';
         //TODO Add COMMENTS!!!
 
         if (sessionStorage.getItem('gameStarted') !== 'true') {
@@ -77,8 +77,8 @@
 
         let do_upload = false
         const game_type_lengths = {
-            "normal": 3_000, // ms
-            "reverse": 15_000,
+            "normal": 5_000, // ms
+            "reverse": 5_000,
         }
 
         const userDot = document.querySelector('.user-dot');
@@ -90,7 +90,7 @@
         let y = height / 2;
         let vx = (Math.random() - 0.5) * 2;
         let vy = (Math.random() - 0.5) * 2;
-        const speeds = [3,4,5];
+        const speeds = [4,5,6];
         const turnProbability = 0.05;
         const maxTurnAngle = Math.PI / 4;
         let currentMousemoveHandler;
@@ -106,6 +106,7 @@
         let distances = [];
 
         let animframe;
+        let intervalId;
 
         function moveUser(e) {
             userDotX = e.clientX;
@@ -220,10 +221,7 @@
             if (game_type === "normal") {
                 currentMousemoveHandler = moveUser;
             } else if (game_type === "reverse") {
-                userDotX = width/2;
-                userDotY = height/2;
-                userDot.style.left = `${userDotX}px`;
-                userDot.style.top = `${userDotY}px`;
+                
 
                 currentMousemoveHandler = moveUserReverseXY;
             } else if (game_type === "offset") {
@@ -263,6 +261,21 @@
             moveRandomDot();
             animframe = requestAnimationFrame(play);
         }
+
+        function recordPos(){
+            intervalId = setInterval(() => {
+                let time = Timestamp.now();
+                console.log("Time:", time);
+                userPositions.push({ x: userDotX, y: userDotY, game_mode: game_type, timestamp: time });
+                followPositions.push({ x: x, y: y, game_mode: game_type, timestamp: time });
+                distanceToDot();
+            }, 100);
+            return intervalId;
+        }
+        function stopRecordPos(intervalId){
+            clearInterval(intervalId)
+        }
+
         function showCursor() {
             document.body.style.cursor = "auto"; // Ensure cursor is visible
         }
@@ -271,6 +284,16 @@
             document.body.style.cursor = "none"; // Hide cursor when the game resumes
         }
         function pauseGame(){
+            // Center the dots
+            userDotX = width/2;
+            userDotY = height/2;
+            x = width/2;
+            y = height/2;
+            userDot.style.left = `${userDotX}px`;
+            userDot.style.top = `${userDotY}px`;
+            randomDot.style.left = `${x}px`;
+            randomDot.style.top = `${y}px`;
+
             cancelAnimationFrame(animframe);
             document.removeEventListener('mousemove', currentMousemoveHandler);
         }
@@ -279,26 +302,25 @@
             play();
         }
         // Function to show the alert
-// Function to show the alert
-function showAlert(message, callback) {
-    const modal = document.getElementById('customAlert');
-    modal.querySelector("p").innerText = message; // Set custom message
-    modal.style.display = 'flex';
-    showCursor();
+        function showAlert(message, callback) {
+            const modal = document.getElementById('customAlert');
+            modal.querySelector("p").innerText = message; // Set custom message
+            modal.style.display = 'flex';
+            showCursor();
 
-    // Ensure clicking "OK" closes the modal and resumes the game
-    document.getElementById("okButton").onclick = function() {
-        closeAlert();
-        if (callback) callback(); // Run the next step only after closing
-    };
-}
+            // Ensure clicking "OK" closes the modal and resumes the game
+            document.getElementById("okButton").onclick = function() {
+                closeAlert();
+                if (callback) callback(); // Run the next step only after closing
+            };
+        }
 
-// Function to close the alert and resume game
-function closeAlert() {
-    document.getElementById('customAlert').style.display = 'none';
-    hideCursor();
-    resumeGame(); // Ensure the game resumes after closing
-}
+        // Function to close the alert and resume game
+        function closeAlert() {
+            document.getElementById('customAlert').style.display = 'none';
+            hideCursor();
+            resumeGame(); // Ensure the game resumes after closing
+        }
 
         randomDot.style.left = `${x}px`;
         randomDot.style.top = `${y}px`;
@@ -308,49 +330,39 @@ function closeAlert() {
         signInAnonymously(auth)
             .then(() => {
                 console.log("User signed in anonymously");
-                setInterval(() => {
-                    let time = Timestamp.now();
-                    console.log("Time:", time);
-                    userPositions.push({ x: userDotX, y: userDotY, game_mode: game_type, timestamp: time });
-                    followPositions.push({ x: x, y: y, game_mode: game_type, timestamp: time });
-                    distanceToDot();
-                }, 100);
+                intervalId = recordPos();
 
                 setMousemoveHandler();
                 play();
                 
-                // Nested setTimeouts. Might want to change later w/ recursion?
-                setTimeout(() => {
+                // Very ugly nested setTimeouts. Might want to change later w/ recursion?
+                setTimeout(() => { // Run when normal mode is over
                     pauseGame();
+                    stopRecordPos(intervalId);
                     game_type = "reverse";
                     showAlert("Your controls have been switched! Try to adapt quickly. Click OK to continue.", () => {
-                        
+                        intervalId = recordPos();
                         console.log("Game type changed to reverse");
         
-                        setTimeout(() => {
+                        setTimeout(() => { // Run when reverse mode is over
                             pauseGame();
+                            stopRecordPos(intervalId);
                             game_type = "normal";
                             showAlert("Your controls have been switched again! Try to adapt quickly. Click OK to continue.", () => {
-                                
+                                intervalId = recordPos();
                                 console.log("Game type changed to normal");
-                                resumeGame();
         
-                                setTimeout(() => {
-                                    game_type = "done";
-                                    setMousemoveHandler();
-                                    console.log("Game type changed to done");
+                                setTimeout(() => { // Run when final normal mode is over
+                                    stopRecordPos(intervalId)
+                                    // In the play loop, this variable change
+                                    // cause sthe loop to end.
+                                    game_type = "done"; 
                                 }, game_type_lengths["normal"]);
                             });
                         }, game_type_lengths["reverse"]);
                     });
                 }, game_type_lengths["normal"]);
-                /*setTimeout(() => {
-                    game_type = "offset";
-                    setMousemoveHandler();
-                    console.log("Game type changed to offset");
-                }, game_type_lengths["reverse"] + game_type_lengths["normal"]);*/
-                
-                
+
             })
             .catch((error) => {
                 console.error("Auth Error:", error.message);
