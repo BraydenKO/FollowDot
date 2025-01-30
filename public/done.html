@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+    <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -34,6 +34,7 @@
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
 </head>
 <body>
     <div id="container">
@@ -46,6 +47,8 @@
         import { initializeFirebase } from './firebaseConfig.js';
         
         const { db, auth } = initializeFirebase();
+
+        const dt = 50 //ms
 
         document.addEventListener('click', async (event) => {
             event.preventDefault();
@@ -60,6 +63,17 @@
         const sectionSizes = JSON.parse(localStorage.getItem('sectionSizes'));
         const percentages = JSON.parse(localStorage.getItem('percentages'));
         const distances = JSON.parse(localStorage.getItem('distances'));
+        const game_timelegths = JSON.parse(localStorage.getItem('game_timelegths'));
+        const highlights = JSON.parse(localStorage.getItem('highlights'));
+
+        let control = game_timelegths["normal"]/dt;
+        let game = control + game_timelegths["reverse"]/dt;
+        let post = control + game;
+        console.log(control);
+        console.log(game);
+        console.log(post);
+        console.log(highlights)
+
 
         // Render the bar chart
         const ctxBar = document.getElementById('resultsChart').getContext('2d');
@@ -80,6 +94,7 @@
                     x: {
                         title: {
                             display: true,
+
                             text: ['Intervals of Distance to the Green Dot (px)',
                                    'For reference, the dots have a diameter of 20px']
                         }
@@ -115,7 +130,7 @@
                     x: {
                         title: {
                             display: true,
-                            text: 'Time (~100 ms)'
+                            text: 'Time (~' + dt + ' ms) (Red is normal tracking, Blue is reverse)'
                         }
                     },
                     y: {
@@ -123,6 +138,39 @@
                         title: {
                             display: true,
                             text: 'Distance'
+                        }
+                    }
+                },
+                plugins: {
+                    annotation: {
+                        annotations: {
+                            highlightRegion1: {
+                                type: 'box',
+                                xMin: 0,  
+                                xMax: highlights[0], 
+                                yMin: 0,  
+                                yMax: 'max', 
+                                backgroundColor: 'rgba(255, 0, 0, 0.2)', 
+                                borderWidth: 0
+                            },
+                            highlightRegion2: {
+                                type: 'box',
+                                xMin: highlights[0],  
+                                xMax: highlights[1], 
+                                yMin: 0,  
+                                yMax: 'max', 
+                                backgroundColor: 'rgba(0, 0, 255, 0.2)', 
+                                borderWidth: 0
+                            },
+                            highlightRegion3: {
+                                type: 'box',
+                                xMin: highlights[1],  
+                                xMax: highlights[2], 
+                                yMin: 0,  
+                                yMax: 'max', 
+                                backgroundColor: 'rgba(255, 0, 0, 0.2)', 
+                                borderWidth: 0
+                            }
                         }
                     }
                 }

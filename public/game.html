@@ -81,10 +81,10 @@
 
         let game_type = "normal";
 
-        let do_upload = false
+        let do_upload = true
         const game_type_lengths = {
-            "normal": 5_000, // ms
-            "reverse": 5_000,
+            "normal": 2_000, // ms
+            "reverse": 2_000,
         }
 
         const userDot = document.querySelector('.user-dot');
@@ -110,7 +110,7 @@
         let userPositions = [];
         let followPositions = [];
         let distances = [];
-
+        let highlights = [];
         let animframe;
         let intervalId;
 
@@ -162,7 +162,6 @@
 
         function distanceToDot(save){
             dist = Math.sqrt((userDotX - x) ** 2 + (userDotY - y) ** 2)
-            if (save){distances.push(dist);}
             return dist;
     
         }
@@ -262,6 +261,8 @@
                 localStorage.setItem('sectionSizes', JSON.stringify(Object.values(sectionSizes)));
                 localStorage.setItem('percentages', JSON.stringify(percentages));
                 localStorage.setItem('distances', JSON.stringify(distances));
+                localStorage.setItem('game_timelegths', JSON.stringify(game_type_lengths));
+                localStorage.setItem('highlights', JSON.stringify(highlights));
                 if (do_upload){ uploadDotData(userPositions, followPositions, distances);}
                 window.location.href = `done.html`;
                 return;
@@ -283,7 +284,7 @@
                 userPositions.push({ x: userDotX, y: userDotY, game_mode: game_type, timestamp: time });
                 followPositions.push({ x: x, y: y, game_mode: game_type, timestamp: time });
                 distances.push(dist);
-            }, 100);
+            }, 50);
             return intervalId;
         }
         function stopRecordPos(intervalId){
@@ -353,6 +354,7 @@
                 setTimeout(() => { // Run when normal mode is over
                     pauseGame();
                     stopRecordPos(intervalId);
+                    highlights.push(distances.length);
                     game_type = "reverse";
                     showAlert("Your controls have been switched! Try to adapt quickly. Click OK to continue.", () => {
                         intervalId = recordPos();
@@ -361,6 +363,7 @@
                         setTimeout(() => { // Run when reverse mode is over
                             pauseGame();
                             stopRecordPos(intervalId);
+                            highlights.push(distances.length);
                             game_type = "normal";
                             showAlert("Your controls have been switched again! Try to adapt quickly. Click OK to continue.", () => {
                                 intervalId = recordPos();
@@ -368,6 +371,7 @@
         
                                 setTimeout(() => { // Run when final normal mode is over
                                     stopRecordPos(intervalId)
+                                    highlights.push(distances.length);
                                     // In the play loop, this variable change
                                     // cause sthe loop to end.
                                     game_type = "done"; 

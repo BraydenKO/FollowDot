@@ -130,7 +130,7 @@
 
       const { db, auth } = initializeFirebase();
 
-      let do_upload = false
+      let do_upload = true
 
       async function uploadGameInput(inputDevice, playedBefore, age, handedness, gender){
         await setDoc(doc(db, "game_inputs", auth.currentUser.uid), {
