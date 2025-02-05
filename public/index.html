@@ -124,7 +124,7 @@
 
   <div id="app"></div>
   <script type="module">
-      import { initializeFirebase } from './firebaseConfig.js';
+      import { initializeFirebase } from './firebaseConfig.js'; // Updated path
       import { doc, setDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
       import { signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
@@ -133,6 +133,7 @@
       let do_upload = true
 
       async function uploadGameInput(inputDevice, playedBefore, age, handedness, gender){
+        console.log("Uploading data...");
         await setDoc(doc(db, "game_inputs", auth.currentUser.uid), {
           inputDevice: inputDevice,
           playedBefore: playedBefore,
@@ -152,11 +153,16 @@
             let age = document.getElementById('age')?.value;
             let handedness = document.getElementById('handedness')?.value;
             let gender = document.getElementById('gender')?.value;
-
-            if (true || (inputDevice && playedBefore && age && handedness && gender)) { // If all options are selected
+            
+            // The !doupload is so that if I'm not recording data, i dont need to fill out the form
+            if (!do_upload || (inputDevice && playedBefore && age && handedness && gender)) { // If all options are selected
               try {
-                if (do_upload){ uploadGameInput(inputDevice, playedBefore, age, handedness, gender);}
-                console.log("Data saved!");
+                if (do_upload){ 
+                  console.log("Data uploading...");
+                  await uploadGameInput(inputDevice, playedBefore, age, handedness, gender);
+                  console.log("Data saved!");
+                }
+                
 
                 sessionStorage.setItem('gameStarted', 'true');
                 window.location.href = 'game.html';

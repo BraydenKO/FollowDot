@@ -65,7 +65,10 @@
     <script type="module">
         //document.getElementById('customAlert').style.display = 'none';
         //TODO Add COMMENTS!!!
+        let do_upload = true
 
+
+        
         if (sessionStorage.getItem('gameStarted') !== 'true') {
             window.location.href = 'index.html';
         } else {
@@ -81,7 +84,7 @@
 
         let game_type = "normal";
 
-        let do_upload = true
+        
         const game_type_lengths = {
             "normal": 20_000, // ms
             "reverse": 20_000,
@@ -99,6 +102,15 @@
         const speeds = [4,5,6];
         const turnProbability = 0.05;
         const maxTurnAngle = Math.PI / 4;
+
+        // From paper and normalized to screen size
+        // Amplitude is deviation from middle of screen
+        const a_y = [0.2*height/2,0.2*height/2,0.2*height/2,0.15*height/2,0.11*height/2,0.08*height/2,0.06*height/2];
+        const freq_y = [0.1,0.25,0.55,0.85,1.15,1.55,2.05];
+         
+        const a_x = [0.21*width/2,0.21*width/2,0.21*width/2,0.14*width/2,0.09*width/2,0.07*width/2,0.06*width/2];
+        const freq_x = [0.15,0.35,0.65,0.95,1.45,1.85,2.15]
+
         let currentMousemoveHandler;
 
         let prevMouseX = null;
@@ -111,6 +123,7 @@
         let followPositions = [];
         let distances = [];
         let highlights = [];
+        let phis = [];
         let animframe;
         let intervalId;
 
@@ -129,6 +142,7 @@
             userDot.style.top = `${userDotY}px`;
         }
 
+        // CURRENTLY unused
         function moveUserOffsetRadians(e) {
             const radians = Math.PI / 4;
 
@@ -197,7 +211,30 @@
             return { sectionSizes, percentages };
         }
 
-        function moveRandomDot() {
+        function gen_phi(){
+            const phi = [];
+            for (let i = 0; i < 7; i++) {
+                // Generate random number between -π and π
+                const randomValue = (Math.random() * 2 * Math.PI) - Math.PI;
+                phi.push(randomValue);
+            }
+            return phi;
+        }
+
+        function moveRandomDot(t, phi) {
+            let dx = 0;
+            for (let i = 0; i < 7; i++) {
+                dx += a_x[i] * Math.cos(2 * Math.PI * t * freq_x[i] + phi[i]);
+            }
+            x = dx + width / 2;
+            let dy = 0;
+            for (let i = 0; i < 7; i++) {
+                dy += a_y[i] * Math.cos(2 * Math.PI * t * freq_y[i] + phi[i]);
+            }
+            y = dy + height / 2;
+            //console.log(x, y);
+
+            /*
             if (Math.random() < turnProbability) {
                 const turnAngle = (Math.random() * 2 - 1) * maxTurnAngle;
                 const currentAngle = Math.atan2(vy, vx);
@@ -215,7 +252,7 @@
             let rando_maxY = height - rando_minY;
             if (x < rando_minX) { x = rando_minX; vx = -vx; } else if (x > rando_maxX) { x = rando_maxX; vx = -vx; }
             if (y < rando_minY) { y = rando_minY; vy = -vy; } else if (y > rando_maxY) { y = rando_maxY; vy = -vy; }
-
+                */
             randomDot.style.left = `${x}px`;
             randomDot.style.top = `${y}px`;
         }
@@ -238,13 +275,22 @@
             document.addEventListener('mousemove', currentMousemoveHandler);
         }
 
-        async function uploadDotData(userPositions, followPositions, distances) {
+        async function uploadDotData(userPositions, followPositions, distances, phis) {
             try {
                 console.log("Uploading user positions...");
+        console.log("User Positions:", userPositions);
+        console.log("Follow Positions:", followPositions);
+        console.log("Distances:", distances);
+        console.log("Phis:", phis);
+        console.log("User ID:", auth.currentUser.uid);
+
                 await setDoc(doc(db, "user_data", auth.currentUser.uid), {
                     positions: userPositions,
                     followPositions: followPositions,
-                    distances: distances, // Include distances in the upload
+                    distances: distances, 
+                    phis_control: phis[0], // The random values used to generate the dot movement
+                    phi_reverse: phis[1],
+                    phi_post: phis[2],
                     uid: auth.currentUser.uid,
                     timestamp: Timestamp.fromDate(new Date())
                 });
@@ -255,7 +301,7 @@
             }
         }
 
-        async function play() {
+        async function play(t, phi) {
             if (game_type === "done") {
                 const { sectionSizes, percentages } = calculateDistancePercentages();
                 localStorage.setItem('sectionSizes', JSON.stringify(Object.values(sectionSizes)));
@@ -263,24 +309,26 @@
                 localStorage.setItem('distances', JSON.stringify(distances));
                 localStorage.setItem('game_timelegths', JSON.stringify(game_type_lengths));
                 localStorage.setItem('highlights', JSON.stringify(highlights));
-                if (do_upload){ uploadDotData(userPositions, followPositions, distances);}
+                if (do_upload){
+                    await uploadDotData(userPositions, followPositions, distances, phis);
+                }
                 window.location.href = `done.html`;
                 return;
             }
-            moveRandomDot();
+            moveRandomDot(t, phi);
+            t = t+0.003;
             if (distanceToDot() < 100){
                 userDot.style.backgroundColor = 'yellow';
             }
             else{
                 userDot.style.backgroundColor = 'red';
             }
-            animframe = requestAnimationFrame(play);
+            animframe = requestAnimationFrame(()=> play(t, phi));
         }
 
         function recordPos(){
             intervalId = setInterval(() => {
                 let time = Timestamp.now();
-                console.log("Time:", time);
                 userPositions.push({ x: userDotX, y: userDotY, game_mode: game_type, timestamp: time });
                 followPositions.push({ x: x, y: y, game_mode: game_type, timestamp: time });
                 distances.push(dist);
@@ -314,7 +362,9 @@
         }
         function resumeGame() {
             setMousemoveHandler();
-            play();
+            let phi = gen_phi();
+            phis.push(phi);
+            play(0, phi);
         }
         // Function to show the alert
         function showAlert(message, callback) {
@@ -348,7 +398,9 @@
                 intervalId = recordPos();
 
                 setMousemoveHandler();
-                play();
+                let phi = gen_phi();
+                phis.push(phi);
+                play(0, phi);
                 
                 // Very ugly nested setTimeouts. Might want to change later w/ recursion?
                 setTimeout(() => { // Run when normal mode is over
