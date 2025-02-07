@@ -129,8 +129,8 @@
 
         // CHANGE these to change the game mode lengths and how many trials are run.
         const game_type_lengths = {
-            "normal": 1_000, // ms
-            "reverse": 1_000,
+            "normal": 5_000, // ms
+            "reverse": 5_000,
         }
         const n_controls = 2;
         const n_perturbs = 2;
@@ -189,7 +189,8 @@
         let close_count = 0; // Number of times the user was close to the fly
         let total_counts = 0; // Total number of times the game checked if the user was close to the fly.
 
-        let dt = 0.1 // seconds per t
+        let dt = 2000; // milliseconds per t. HIGHER values lead to slower fly
+        let start;
         
         function goFullscreen() {
 
@@ -419,7 +420,7 @@
                 return;
             }
             moveRandomDot(t, phi);
-            t = t+0.003;
+            t = (Date.now() - start)/dt
             if (distanceToDot() < 100){
                 userDot.style.backgroundColor = 'lime';
                 //close_count += 1;
@@ -433,7 +434,7 @@
 
         function recordPos(){
             intervalId = setInterval(() => {
-                let time = Timestamp.now();
+                let time = Date.now();
                 userPositions.push({ x: userDotX, y: userDotY, game_mode: game_type, timestamp: time });
                 followPositions.push({ x: x, y: y, game_mode: game_type, timestamp: time });
                 distances.push(dist);
@@ -532,7 +533,7 @@
 
                 function runTrial(remainingTrials) {
                     
-                    console.log(phis);
+                    start = Date.now();
                     if(remainingTrials <=0){ throw new Error("Remaining trials must be positive"); }
                     
                     if(isFinal && remainingTrials === 1){ // When it's the last mode of the game, don't alert
