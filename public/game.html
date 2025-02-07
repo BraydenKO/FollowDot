@@ -129,12 +129,12 @@
 
         // CHANGE these to change the game mode lengths and how many trials are run.
         const game_type_lengths = {
-            "normal": 2_000, // ms
-            "reverse": 2_000,
+            "normal": 1_000, // ms
+            "reverse": 1_000,
         }
-        const n_controls = 3;
-        const n_perturbs = 3;
-        const n_posts = 3;
+        const n_controls = 2;
+        const n_perturbs = 2;
+        const n_posts = 2;
         
         // This just says the first game is normal mode.
         let game_type = "normal";
@@ -175,8 +175,12 @@
         let userDotY = height/2;
         let dist;
 
+        let trials = {};
+        let trial = 0;
+
         let userPositions = [];
         let followPositions = [];
+
         let distances = [];
         let highlights = [];
         let phis = [];
@@ -185,7 +189,7 @@
         let close_count = 0; // Number of times the user was close to the fly
         let total_counts = 0; // Total number of times the game checked if the user was close to the fly.
 
-        
+        let dt = 0.1 // seconds per t
         
         function goFullscreen() {
 
@@ -266,7 +270,7 @@
     
         }
 
-        function calculateDistancePercentages() {
+        function calculateDistancePercentages(distances) {
             const maxDistance = Math.max(...distances);
             const sectionSizes = {
                 0: Math.round(1  * maxDistance / 15),
@@ -365,20 +369,10 @@
 
         async function uploadDotData(userPositions, followPositions, distances, phis) {
             try {
-                console.log("Uploading user positions...");
-        console.log("User Positions:", userPositions);
-        console.log("Follow Positions:", followPositions);
-        console.log("Distances:", distances);
-        console.log("Phis:", phis);
-        console.log("User ID:", auth.currentUser.uid);
+                
 
                 await setDoc(doc(db, "user_data", auth.currentUser.uid), {
-                    positions: userPositions,
-                    followPositions: followPositions,
-                    distances: distances, 
-                    phis_control: phis[0], // The random values used to generate the dot movement
-                    phi_reverse: phis[1],
-                    phi_post: phis[2],
+                    trials: trials,
                     uid: auth.currentUser.uid,
                     timestamp: Timestamp.fromDate(new Date())
                 });
@@ -389,14 +383,35 @@
             }
         }
 
+        function getDistances(){
+
+            const distanceArrays = Object.values(trials).map(obj => obj.distances);
+
+            // Flatten all distances into a single array
+            const allDistances = distanceArrays.flat();
+
+            const cumulativeLengths = distanceArrays.reduce((acc, arr) => {
+                acc.push((acc.length > 0 ? acc[acc.length - 1] : 0) + arr.length);
+                return acc;
+            }, []);
+            const newHighlights = [cumulativeLengths[n_controls-1],
+                                   cumulativeLengths[n_controls + n_perturbs-1],
+                                   cumulativeLengths[n_controls + n_perturbs + n_posts-1]];
+            console.log(cumulativeLengths);
+            console.log(newHighlights);
+            
+            return {allDistances, newHighlights};
+        }
+
         async function play(t, phi) {
             if (game_type === "done") {
-                const { sectionSizes, percentages } = calculateDistancePercentages();
+                const { allDistances, newHighlights } = getDistances();
+                const { sectionSizes, percentages } = calculateDistancePercentages(allDistances);
                 localStorage.setItem('sectionSizes', JSON.stringify(Object.values(sectionSizes)));
                 localStorage.setItem('percentages', JSON.stringify(percentages));
-                localStorage.setItem('distances', JSON.stringify(distances));
+                localStorage.setItem('distances', JSON.stringify(allDistances));
                 localStorage.setItem('game_timelegths', JSON.stringify(game_type_lengths));
-                localStorage.setItem('highlights', JSON.stringify(highlights));
+                localStorage.setItem('highlights', JSON.stringify(newHighlights));
                 if (do_upload){
                     await uploadDotData(userPositions, followPositions, distances, phis);
                 }
@@ -490,7 +505,25 @@
         randomDot.style.left = `${x}px`;
         randomDot.style.top = `${y}px`;
 
-        
+        /*console.log("User Positions:", userPositions);
+        console.log("Follow Positions:", followPositions);
+        console.log("Distances:", distances);
+        console.log("Phis:", phis);
+        console.log("User ID:", auth.currentUser.uid);*/
+
+        function addTrialData(){
+            trials[trial]={
+                "distances":distances,
+                "userPositions":userPositions,
+                "flyPositions":followPositions,
+                "phis": phis[phis.length - 1], // keep the last phis
+                "num_phis":phis.length, // TEMP for testing
+            }
+            trial++;
+            distances = [];
+            userPositions = [];
+            followPositions = [];
+        }
 
         async function next_mode(mode, trial, isFinal) {
             intervalId = recordPos();
@@ -498,12 +531,15 @@
                 console.log(`Game type changed to ${mode}`);
 
                 function runTrial(remainingTrials) {
+                    
+                    console.log(phis);
                     if(remainingTrials <=0){ throw new Error("Remaining trials must be positive"); }
                     
                     if(isFinal && remainingTrials === 1){ // When it's the last mode of the game, don't alert
                         setTimeout(() => {
                             stopRecordPos(intervalId)
-                            highlights.push(distances.length);
+                            //highlights.push(distances.length);
+                            addTrialData();
                             // In the play loop, this variable change
                             // cause sthe loop to end.
                             game_type = "done"; 
@@ -517,7 +553,8 @@
                             console.log(`Running trial for mode: ${mode}, remaining trials: ${remainingTrials - 1}`);
                             pauseGame();
                             stopRecordPos(intervalId);
-                            highlights.push(distances.length);
+                            //highlights.push(distances.length);
+                            addTrialData();
                             showAlert(`Great Job! Now, your controls will be switched! Try to adapt quickly. Click OK to continue.`, () => {
                                 //close_count = 0;
                                 //total_counts = 0;
@@ -532,12 +569,13 @@
                             console.log(`Running trial for mode: ${mode}, remaining trials: ${remainingTrials}`);
                             pauseGame();
                             stopRecordPos(intervalId);
+                            addTrialData();
                             showAlert(`Good job! Click OK to continue the game.`, async () => {
                                 
                                 //close_count = 0;
                                 //total_counts = 0;
                                 placeDot();
-                                await pauseFollowDotMotion(1.5); // Pause for 1 second
+                                await pauseFollowDotMotion(0.5); // Pause for 1 second
                                 intervalId = recordPos();
                                 runTrial(remainingTrials - 1);
                             });
@@ -553,18 +591,18 @@
             game_type = "normal";
             setMousemoveHandler();
             placeDot();
-            await pauseFollowDotMotion(2); 
+            await pauseFollowDotMotion(0.5); 
             await next_mode("normal", n_controls, false);
             
             game_type = "reverse";
             setMousemoveHandler();
             placeDot();
-            await pauseFollowDotMotion(2); // Pause for 2 second
+            await pauseFollowDotMotion(0.5); // Pause for 2 second
             await next_mode("reverse", n_perturbs, false);
 
             game_type = "normal";
             setMousemoveHandler();
-            await pauseFollowDotMotion(2); // Pause for 2 second
+            await pauseFollowDotMotion(0.5); // Pause for 2 second
             await next_mode("normal", n_posts, true);
         }
 
