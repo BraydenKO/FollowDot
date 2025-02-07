@@ -407,12 +407,12 @@
             t = t+0.003;
             if (distanceToDot() < 100){
                 userDot.style.backgroundColor = 'lime';
-                close_count += 1;
+                //close_count += 1;
             }
             else{
                 userDot.style.backgroundColor = 'red';
             }
-            total_counts += 1;
+            //total_counts += 1;
             animframe = requestAnimationFrame(()=> play(t, phi));
         }
 
@@ -518,9 +518,9 @@
                             pauseGame();
                             stopRecordPos(intervalId);
                             highlights.push(distances.length);
-                            showAlert(`Great Job! You were close to the fly ${Math.ceil(close_count/total_counts * 100)}% of the time. Now, your controls will be switched! Try to adapt quickly. Click OK to continue.`, () => {
-                                close_count = 0;
-                                total_counts = 0;
+                            showAlert(`Great Job! Now, your controls will be switched! Try to adapt quickly. Click OK to continue.`, () => {
+                                //close_count = 0;
+                                //total_counts = 0;
                                 
                                 resolve(); // Dont recursive call since it's the last trials
                             });
@@ -532,10 +532,10 @@
                             console.log(`Running trial for mode: ${mode}, remaining trials: ${remainingTrials}`);
                             pauseGame();
                             stopRecordPos(intervalId);
-                            showAlert(`Good job! You were close to the fly ${Math.ceil(close_count/total_counts * 100)}% of the time. Click OK to continue the game.`, () => {
+                            showAlert(`Good job! Click OK to continue the game.`, () => {
                                 
-                                close_count = 0;
-                                total_counts = 0;
+                                //close_count = 0;
+                                //total_counts = 0;
                                 placeDot();
                                 pauseFollowDotMotion(1.5); // Pause for 1 second
                                 intervalId = recordPos();
