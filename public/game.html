@@ -129,8 +129,8 @@
 
         // CHANGE these to change the game mode lengths and how many trials are run.
         const game_type_lengths = {
-            "normal": 10_000, // ms
-            "reverse": 10_000,
+            "normal": 2_000, // ms
+            "reverse": 2_000,
         }
         const n_controls = 3;
         const n_perturbs = 3;
@@ -467,7 +467,7 @@
             showCursor();
 
             // Ensure clicking "OK" closes the modal and resumes the game
-            document.getElementById("okButton").onclick = function(event) {
+            document.getElementById("okButton").onclick = async function(event) {
                 // Get the mouse coordinates
       
                 console.log("User Dot Position:", userDotX, userDotY);
@@ -475,7 +475,7 @@
                 closeAlert();
                 
                 // Run the next step after closing
-                if (callback) callback();
+                if (callback) await callback();
             };
             
         }
@@ -532,12 +532,12 @@
                             console.log(`Running trial for mode: ${mode}, remaining trials: ${remainingTrials}`);
                             pauseGame();
                             stopRecordPos(intervalId);
-                            showAlert(`Good job! Click OK to continue the game.`, () => {
+                            showAlert(`Good job! Click OK to continue the game.`, async () => {
                                 
                                 //close_count = 0;
                                 //total_counts = 0;
                                 placeDot();
-                                pauseFollowDotMotion(1.5); // Pause for 1 second
+                                await pauseFollowDotMotion(1.5); // Pause for 1 second
                                 intervalId = recordPos();
                                 runTrial(remainingTrials - 1);
                             });
@@ -553,18 +553,18 @@
             game_type = "normal";
             setMousemoveHandler();
             placeDot();
-            await pauseFollowDotMotion(1.5); 
+            await pauseFollowDotMotion(2); 
             await next_mode("normal", n_controls, false);
             
             game_type = "reverse";
             setMousemoveHandler();
             placeDot();
-            await pauseFollowDotMotion(1.5); // Pause for 1 second
+            await pauseFollowDotMotion(2); // Pause for 2 second
             await next_mode("reverse", n_perturbs, false);
 
             game_type = "normal";
             setMousemoveHandler();
-            await pauseFollowDotMotion(1.5); // Pause for 1 second
+            await pauseFollowDotMotion(2); // Pause for 2 second
             await next_mode("normal", n_posts, true);
         }
 
