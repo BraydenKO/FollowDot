@@ -129,8 +129,8 @@
 
         // CHANGE these to change the game mode lengths and how many trials are run.
         const game_type_lengths = {
-            "normal": 20_000, // ms
-            "reverse": 20_000,
+            "normal": 2_000, // ms
+            "reverse": 2_000,
         }
         const n_controls = 3;
         const n_perturbs = 3;
@@ -500,7 +500,7 @@
                 function runTrial(remainingTrials) {
                     if(remainingTrials <=0){ throw new Error("Remaining trials must be positive"); }
                     
-                    if(isFinal){ // When it's the last mode of the game, don't alert
+                    if(isFinal && remainingTrials === 1){ // When it's the last mode of the game, don't alert
                         setTimeout(() => {
                             stopRecordPos(intervalId)
                             highlights.push(distances.length);
@@ -554,7 +554,7 @@
             setMousemoveHandler();
             placeDot();
             await pauseFollowDotMotion(1.5); 
-            await next_mode("normal", 1, false);
+            await next_mode("normal", n_controls, false);
             
             game_type = "reverse";
             setMousemoveHandler();
