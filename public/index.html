@@ -111,11 +111,14 @@
         </div>
     </div>
     <div id = "blurb">
-      In this game, you will control a <span style="color: red;">red dot</span>. Your goal is to follow a moving <span style="color: green;">green dot</span> as closely as possible.
+      In this game, you will control a <span style="color: red;">red dot</span>. Your goal is to follow a moving <span style="color: green;">fly</span> as closely as possible.
   </div>
   <div id = "blurb">
-      In the middle of your game, your controls may be changed, and this may happen multiple times.
+      You will have a series of trials. And for one bacth of trials, your controls may be changed, and this may happen multiple times.
   </div>
+  <div id = "blurb">
+    We will let you know before your controls are changed.
+</div>
   <div id = "blurb">
       Try to adjust as quickly as possible! (we recommend you use fullscreen)
   </div>
@@ -130,7 +133,7 @@
 
       const { db, auth } = initializeFirebase();
 
-      let do_upload = true
+      let do_upload = false
 
       async function uploadGameInput(inputDevice, playedBefore, age, handedness, gender){
         console.log("Uploading data...");
@@ -145,9 +148,12 @@
         });
       }
 
+      
+
       signInAnonymously(auth)
         .then(() => {
           document.getElementById('start-button').addEventListener('click', async () => {
+            localStorage.setItem('fullscreenIntent', 'true');
             let inputDevice = document.getElementById('input_device')?.value;
             let playedBefore = document.getElementById('played_before')?.value;
             let age = document.getElementById('age')?.value;

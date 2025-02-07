@@ -6,14 +6,32 @@
     <title>Mouse Follower Dot</title>
     <style>
         body { margin: 0; overflow: hidden; height: 100vh; cursor: none; }
-        .user-dot, .random-dot { position: absolute; 
-                                width: 20px; height: 20px; 
-                                background-color: red; 
-                                border-radius: 50%; 
-                                pointer-events: none; 
-                                transform: translate(-50%, -50%); 
-                                border: 2px solid black;; }
-        .random-dot { background-color: green; }
+        .user-dot, .random-dot {
+            position: absolute;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            border: 2px solid black;
+            
+        }
+        
+        .user-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%; /* Only applies to user-dot */
+        }
+        
+        .random-dot {
+            background-color: transparent; /* Ensure no background */
+            background-image: url('fly.png');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            width: 50px;
+            height: 50px;
+            border: none; /* Remove border to avoid unwanted cropping */
+        }
+        
+        
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -21,14 +39,13 @@
             width: 100%;
             height: 100%;
             background: rgba(0, 0, 0, 0.5);
-            display: none; /* Initially hidden */
+            display: flex;
             align-items: center;
             justify-content: center;
             z-index: 1000;
-            cursor: auto; /* Ensure cursor is visible */
+            cursor: auto;
         }
-
-        /* Modal box */
+        
         .modal {
             background: white;
             padding: 20px;
@@ -36,20 +53,32 @@
             text-align: center;
             width: 300px;
             position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: auto;
         }
-
-        /* Centered OK button */
+        
+        .modal p {
+            margin-bottom: 50px; /* Add margin to create space between the text and button */
+        }
+        
         .ok-button {
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
             padding: 10px 20px;
             background: blue;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            position: absolute;
+            bottom: 20px; /* Shift the button up slightly */
+            left: 50%;
+            transform: translateX(-50%);
         }
+        
+        
+        
     </style>
 </head>
 <body>
@@ -61,11 +90,24 @@
             <button class="ok-button" id="okButton">OK</button>
         </div>
     </div>
+    <div id="timerDisplay" style="
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 24px;
+        font-weight: bold;
+        color: white;
+        background: black;
+        padding: 5px 10px;
+        border-radius: 5px;
+        display: none;
+    "></div>
 
     <script type="module">
         //document.getElementById('customAlert').style.display = 'none';
         //TODO Add COMMENTS!!!
-        let do_upload = true
+        let do_upload = false
 
 
         
@@ -86,14 +128,19 @@
 
         
         const game_type_lengths = {
-            "normal": 20_000, // ms
+            "normal": 500, // ms
             "reverse": 20_000,
         }
+        const n_controls = 1;
+        const n_perturbs = 1;
+        const n_posts = 1;
+
 
         const userDot = document.querySelector('.user-dot');
         const randomDot = document.querySelector('.random-dot');
-        const width = window.innerWidth;
-        const height = window.innerHeight;
+        const width = window.screen.width;
+        const height = window.screen.height;
+
 
         let x = width / 2;
         let y = height / 2;
@@ -111,6 +158,10 @@
         const a_x = [0.21*width/2,0.21*width/2,0.21*width/2,0.14*width/2,0.09*width/2,0.07*width/2,0.06*width/2];
         const freq_x = [0.15,0.35,0.65,0.95,1.45,1.85,2.15]
 
+
+        
+
+
         let currentMousemoveHandler;
 
         let prevMouseX = null;
@@ -126,10 +177,37 @@
         let phis = [];
         let animframe;
         let intervalId;
+        let close_count = 0;
+        let total_counts = 0;
+
+        
+
+        function goFullscreen() {
+
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen();
+            } else if (document.documentElement.mozRequestFullScreen) { // Firefox
+                document.documentElement.mozRequestFullScreen();
+            } else if (document.documentElement.webkitRequestFullscreen) { // Chrome, Safari, Opera
+                document.documentElement.webkitRequestFullscreen();
+            } else if (document.documentElement.msRequestFullscreen) { // IE/Edge
+                document.documentElement.msRequestFullscreen();
+            }
+            document.body.style.cursor = 'none';  // Hides the cursor
+
+        
+        }
+
+        
 
         function moveUser(e) {
-            userDotX = e.clientX;
-            userDotY = e.clientY;
+            userDotX = Math.max(0, Math.min(width,e.clientX));
+            userDotY = Math.max(0, Math.min(height,e.clientY));
+            
+            if (userDotX < 0) { userDotX = 0; }
+            if (userDotX > width) { userDotX = width; }
+            if (userDotY < 0) { userDotY = 0; }
+            if (userDotY > height) { userDotY = height; }
             userDot.style.left = `${userDotX}px`;
             userDot.style.top = `${userDotY}px`;
         }
@@ -138,6 +216,9 @@
             
             userDotX -= e.movementX;
             userDotY -= e.movementY;
+            userDotX = Math.max(0, Math.min(width, userDotX));
+            userDotY = Math.max(0, Math.min(height - 50, userDotY));
+            
             userDot.style.left = `${userDotX}px`;
             userDot.style.top = `${userDotY}px`;
         }
@@ -262,6 +343,8 @@
                 document.removeEventListener('mousemove', currentMousemoveHandler);
             }
 
+
+
             if (game_type === "normal") {
                 currentMousemoveHandler = moveUser;
             } else if (game_type === "reverse") {
@@ -318,11 +401,13 @@
             moveRandomDot(t, phi);
             t = t+0.003;
             if (distanceToDot() < 100){
-                userDot.style.backgroundColor = 'yellow';
+                userDot.style.backgroundColor = 'lime';
+                close_count += 1;
             }
             else{
                 userDot.style.backgroundColor = 'red';
             }
+            total_counts += 1;
             animframe = requestAnimationFrame(()=> play(t, phi));
         }
 
@@ -346,25 +431,28 @@
         function hideCursor() {
             document.body.style.cursor = "none"; // Hide cursor when the game resumes
         }
-        function pauseGame(){
+        function pauseGame(pause_mouse = true){
             // Center the dots
             userDotX = width/2;
             userDotY = height/2;
-            x = width/2;
-            y = height/2;
+           // x = width/2;
+            //y = height/2;
             userDot.style.left = `${userDotX}px`;
             userDot.style.top = `${userDotY}px`;
-            randomDot.style.left = `${x}px`;
-            randomDot.style.top = `${y}px`;
+            //randomDot.style.left = `${x}px`;
+            //randomDot.style.top = `${y}px`;
 
             cancelAnimationFrame(animframe);
-            document.removeEventListener('mousemove', currentMousemoveHandler);
+            if (pause_mouse){userDot.style.visibility = 'hidden';}
         }
-        function resumeGame() {
+        function resumeGame(do_gen_phi = true){ 
             setMousemoveHandler();
-            let phi = gen_phi();
-            phis.push(phi);
-            play(0, phi);
+            userDot.style.visibility = 'visible';
+            if (do_gen_phi){
+                let phi = gen_phi();
+                phis.push(phi);
+            }
+            play(0, phis[phis.length - 1]);
         }
         // Function to show the alert
         function showAlert(message, callback) {
@@ -374,10 +462,17 @@
             showCursor();
 
             // Ensure clicking "OK" closes the modal and resumes the game
-            document.getElementById("okButton").onclick = function() {
+            document.getElementById("okButton").onclick = function(event) {
+                // Get the mouse coordinates
+      
+                console.log("User Dot Position:", userDotX, userDotY);
+
                 closeAlert();
-                if (callback) callback(); // Run the next step only after closing
+                
+                // Run the next step after closing
+                if (callback) callback();
             };
+            
         }
 
         // Function to close the alert and resume game
@@ -391,48 +486,156 @@
         randomDot.style.top = `${y}px`;
 
         
-        
-        signInAnonymously(auth)
-            .then(() => {
-                console.log("User signed in anonymously");
-                intervalId = recordPos();
 
-                setMousemoveHandler();
-                let phi = gen_phi();
-                phis.push(phi);
-                play(0, phi);
-                
-                // Very ugly nested setTimeouts. Might want to change later w/ recursion?
-                setTimeout(() => { // Run when normal mode is over
-                    pauseGame();
-                    stopRecordPos(intervalId);
-                    highlights.push(distances.length);
-                    game_type = "reverse";
-                    showAlert("Your controls have been switched! Try to adapt quickly. Click OK to continue.", () => {
-                        intervalId = recordPos();
-                        console.log("Game type changed to reverse");
-        
-                        setTimeout(() => { // Run when reverse mode is over
+        async function next_mode(mode, trial, isFinal) {
+            intervalId = recordPos();
+            return new Promise((resolve) => {
+                console.log(`Game type changed to ${mode}`);
+
+                function runTrial(remainingTrials) {
+                    if(remainingTrials <=0){ throw new Error("Remaining trials must be positive"); }
+                    
+                    if(isFinal){ // When it's the last mode of the game, don't alert
+                        setTimeout(() => {
+                            stopRecordPos(intervalId)
+                            highlights.push(distances.length);
+                            // In the play loop, this variable change
+                            // cause sthe loop to end.
+                            game_type = "done"; 
+                            resolve();
+                        }, game_type_lengths[mode]);
+                    }
+
+                    else if (remainingTrials === 1) { // When it's the last trial of the mode, 
+                                                     // Alert a change of controls
+                        setTimeout(() => {
+                            console.log(`Running trial for mode: ${mode}, remaining trials: ${remainingTrials - 1}`);
                             pauseGame();
                             stopRecordPos(intervalId);
                             highlights.push(distances.length);
-                            game_type = "normal";
-                            showAlert("Your controls have been switched again! Try to adapt quickly. Click OK to continue.", () => {
-                                intervalId = recordPos();
-                                console.log("Game type changed to normal");
-        
-                                setTimeout(() => { // Run when final normal mode is over
-                                    stopRecordPos(intervalId)
-                                    highlights.push(distances.length);
-                                    // In the play loop, this variable change
-                                    // cause sthe loop to end.
-                                    game_type = "done"; 
-                                }, game_type_lengths["normal"]);
+                            showAlert(`Great Job! You were close to the fly ${Math.ceil(close_count/total_counts * 100)}% of the time. Now, your controls will be switched! Try to adapt quickly. Click OK to continue.`, () => {
+                                close_count = 0;
+                                total_counts = 0;
+                                
+                                resolve(); // Dont recursive call since it's the last trials
                             });
-                        }, game_type_lengths["reverse"]);
-                    });
-                }, game_type_lengths["normal"]);
+                        }, game_type_lengths[mode]);
 
+                    
+                    } else {
+                        setTimeout(() => {
+                            console.log(`Running trial for mode: ${mode}, remaining trials: ${remainingTrials}`);
+                            pauseGame();
+                            stopRecordPos(intervalId);
+                            showAlert(`Good job! You were close to the fly ${Math.ceil(close_count/total_counts * 100)}% of the time. Click OK to continue the game.`, () => {
+                                
+                                close_count = 0;
+                                total_counts = 0;
+                                placeDot();
+                                pauseFollowDotMotion(1.5); // Pause for 1 second
+                                intervalId = recordPos();
+                                runTrial(remainingTrials - 1);
+                            });
+                        }, game_type_lengths[mode]);
+                    }
+                }
+
+                runTrial(trial);
+            });
+        }
+
+        async function runGameModes() {
+            game_type = "normal";
+            setMousemoveHandler();
+            placeDot();
+            await pauseFollowDotMotion(1.5); 
+            await next_mode("normal", 1, false);
+            
+            game_type = "reverse";
+            setMousemoveHandler();
+            placeDot();
+            await pauseFollowDotMotion(1.5); // Pause for 1 second
+            await next_mode("reverse", n_perturbs, false);
+
+            game_type = "normal";
+            setMousemoveHandler();
+            await pauseFollowDotMotion(1.5); // Pause for 1 second
+            await next_mode("normal", n_posts, true);
+        }
+
+        function pauseFollowDotMotion(seconds) {
+            return new Promise((resolve) => {
+                pauseGame(false); // Pause the game but keep the mousemove handler
+                const timerDisplay = document.getElementById("timerDisplay");
+                let remainingTime = seconds;
+        
+                timerDisplay.innerText = `${remainingTime}s`;
+                timerDisplay.style.display = "block"; // Show timer
+        
+                const countdownInterval = setInterval(() => {
+                    remainingTime = (remainingTime*10 - 1)/10; // Annoying way to deal with floating points
+                    if (remainingTime <= 0) {
+                        clearInterval(countdownInterval);
+                        timerDisplay.style.display = "none"; // Hide timer when done
+                        resumeGame(false); // Resume the game without generating new phi
+                        resolve();
+                    } else {
+                        timerDisplay.innerText = `${remainingTime}s`;
+                    }
+                }, 100);
+            });
+        }
+        
+
+        function placeDot(){
+            let dx = 0;
+            let phi = phis[phis.length - 1];
+            for (let i = 0; i < 7; i++) {
+                dx += a_x[i] * Math.cos(phi[i]);
+            }
+            x = dx + width / 2;
+            let dy = 0;
+            for (let i = 0; i < 7; i++) {
+                dy += a_y[i] * Math.cos(phi[i]);
+            }
+            y = dy + height / 2;
+            randomDot.style.left = `${x}px`;
+            randomDot.style.top = `${y}px`;
+            console.log('placing dot at ', x, y);
+        }
+
+
+        function startAlert(msg, callback) {
+            const modal = document.getElementById('customAlert');
+            modal.querySelector("p").innerText = msg; // Set custom message
+            modal.style.display = 'flex';
+            showCursor();
+
+            // Ensure clicking "OK" closes the modal and resumes the game
+            document.getElementById("okButton").onclick = function() {
+                goFullscreen();
+                document.getElementById('customAlert').style.display = 'none';
+                hideCursor();
+                callback(); // Run the next step only after closing
+            };
+        }
+
+        signInAnonymously(auth)
+            .then(() => {
+                console.log("User signed in anonymously");
+
+            
+                startAlert("Welcome! Get ready to follow the fly. You will have a countdown above before the game begins on each trial. Press OK to begin and go fullscreen", ()=>{
+                    setMousemoveHandler();
+                    let phi = gen_phi();
+                    phis.push(phi);
+                    placeDot();
+                    play(0, phi);
+
+                    runGameModes();
+                });
+
+                
             })
             .catch((error) => {
                 console.error("Auth Error:", error.message);
