@@ -192,23 +192,12 @@
       signInAnonymously(auth)
         .then(() => {
           document.getElementById('start-button').addEventListener('click', async () => {
-            document.getElementById('container').style.display = 'none';
-            document.getElementById('consentForm').style.display = 'block';
-          });
-          document.getElementById('consentButton').addEventListener('click', async () => {
-            var consent = document.getElementById('consentCheckbox').checked;
-            localStorage.setItem('fullscreenIntent', 'true');
-            if (!consent) {
-              errorMessages.innerHTML = '<p class="error">You must accept the consent form.</p>';
-              return;
-            }
             let inputDevice = document.getElementById('input_device')?.value;
             let playedBefore = document.getElementById('played_before')?.value;
             let age = document.getElementById('age')?.value;
             let handedness = document.getElementById('handedness')?.value;
             let gender = document.getElementById('gender')?.value;
-            
-            // The !doupload is so that if I'm not recording data, i dont need to fill out the form
+
             if (!do_upload || (inputDevice && playedBefore && age && handedness && gender)) { // If all options are selected
               try {
                 if (do_upload){ 
@@ -219,14 +208,29 @@
                 
 
                 sessionStorage.setItem('gameStarted', 'true');
-                window.location.href = 'game.html';
               } catch (error) {
                 console.error("Firestore write error:", error.message);
                 console.error("Error details:", error);
                 alert("Error saving data. Please try again.");
               }
+              document.getElementById('container').style.display = 'none';
+              document.getElementById('consentForm').style.display = 'block';
             } else {
               alert("Please answer all questions.");
+            }
+
+
+            
+          });
+          document.getElementById('consentButton').addEventListener('click', async () => {
+            var consent = document.getElementById('consentCheckbox').checked;
+            localStorage.setItem('fullscreenIntent', 'true');
+            if (!consent) {
+              alert('You must accept the consent form');
+              
+            }
+            else {
+              window.location.href = 'game.html';
             }
           });
         })
