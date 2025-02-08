@@ -55,6 +55,35 @@
           text-align: center;
           margin-bottom: 20px;
       }
+
+      
+      #consentContainer {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        border: 1px solid #ccc;
+        padding: 40px;
+        box-sizing: border-box;
+        margin-top: 20px;
+        display: block; 
+    }
+    
+    #consentPDF {
+        width: 1000px;
+        height: 700px;
+    }
+    
+    #consentCheckbox {
+        width: 20px;
+        height: 20px;
+        font-size: 30px;
+        cursor: pointer;
+    }
+    
+    .consent-label {
+        font-size: 20px;
+        text-align: left;
+    }
     </style>
 </head>
 <body>
@@ -124,7 +153,17 @@
   </div>
     <button id="start-button">Start Game</button>
   </div>
+  <form id="consentForm" action="game.html" method="get">
+      <div id="consentContainer">
+          <embed id="consentPDF" src="consent_form.pdf#toolbar=0" type="application/pdf">
+          <br>
+          <input type="checkbox" id="consentCheckbox" required>
+          <label for="consentCheckbox" class="consent-label">I accept</label><br>
+      </div>
 
+      <div id="errorMessages" class="error"></div>
+      <button type="button" id="consentButton">Start</button>
+  </form>
   <div id="app"></div>
   <script type="module">
       import { initializeFirebase } from './firebaseConfig.js'; // Updated path
@@ -148,12 +187,21 @@
         });
       }
 
-      
+      document.getElementById('consentForm').style.display = 'none';
 
       signInAnonymously(auth)
         .then(() => {
           document.getElementById('start-button').addEventListener('click', async () => {
+            document.getElementById('container').style.display = 'none';
+            document.getElementById('consentForm').style.display = 'block';
+          });
+          document.getElementById('consentButton').addEventListener('click', async () => {
+            var consent = document.getElementById('consentCheckbox').checked;
             localStorage.setItem('fullscreenIntent', 'true');
+            if (!consent) {
+              errorMessages.innerHTML = '<p class="error">You must accept the consent form.</p>';
+              return;
+            }
             let inputDevice = document.getElementById('input_device')?.value;
             let playedBefore = document.getElementById('played_before')?.value;
             let age = document.getElementById('age')?.value;

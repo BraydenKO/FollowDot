@@ -10,14 +10,19 @@
             position: absolute;
             pointer-events: none;
             transform: translate(-50%, -50%);
-            border: 2px solid black;
+            /*border: 2px solid black; Deprecated*/
             
         }
         
         .user-dot {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%; /* Only applies to user-dot */
+            background-color: transparent; /* Ensure no background */
+            background-image: url('shadow.png');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            width: 50px;
+            height: 50px;
+            border: none; /* Only applies to user-dot */
         }
         
         .random-dot {
@@ -76,6 +81,7 @@
             left: 50%;
             transform: translateX(-50%);
         }
+
         
         
         
@@ -103,6 +109,7 @@
         border-radius: 5px;
         display: none;
     "></div>
+    
 
     <script type="module">
         //document.getElementById('customAlert').style.display = 'none';
@@ -129,12 +136,12 @@
 
         // CHANGE these to change the game mode lengths and how many trials are run.
         const game_type_lengths = {
-            "normal": 5_000, // ms
-            "reverse": 5_000,
+            "normal": 2_000, // ms
+            "reverse": 2_000,
         }
-        const n_controls = 3;
-        const n_perturbs = 3;
-        const n_posts = 3;
+        const n_controls = 1;
+        const n_perturbs = 1;
+        const n_posts = 1;
         
         // This just says the first game is normal mode.
         let game_type = "normal";
@@ -368,10 +375,9 @@
             document.addEventListener('mousemove', currentMousemoveHandler);
         }
 
-        async function uploadDotData(userPositions, followPositions, distances, phis) {
+        async function uploadDotData() {
             try {
-                
-
+                console.log(trials)
                 await setDoc(doc(db, "user_data", auth.currentUser.uid), {
                     trials: trials,
                     uid: auth.currentUser.uid,
@@ -414,7 +420,7 @@
                 localStorage.setItem('game_timelegths', JSON.stringify(game_type_lengths));
                 localStorage.setItem('highlights', JSON.stringify(newHighlights));
                 if (do_upload){
-                    await uploadDotData(userPositions, followPositions, distances, phis);
+                    await uploadDotData();
                 }
                 window.location.href = `done.html`;
                 return;
@@ -422,14 +428,18 @@
             t = (Date.now() - start)/dt
             moveRandomDot(t, phi);
             
-            if (distanceToDot() < 100){
+
+            // Handles changing color of the user.
+            // Right now the user is a shadow so idt it will change color
+            //
+            /*if (distanceToDot() < 100){
                 userDot.style.backgroundColor = 'lime';
                 //close_count += 1;
             }
             else{
                 userDot.style.backgroundColor = 'red';
             }
-            //total_counts += 1;
+            //total_counts += 1; */
             animframe = requestAnimationFrame(()=> play(t, phi));
         }
 
@@ -438,7 +448,7 @@
                 let time = Date.now();
                 userPositions.push({ x: userDotX, y: userDotY, game_mode: game_type, timestamp: time });
                 followPositions.push({ x: x, y: y, game_mode: game_type, timestamp: time });
-                distances.push(dist);
+                distances.push(distanceToDot());
             }, 50);
             return intervalId;
         }
@@ -504,8 +514,10 @@
             resumeGame(); // Ensure the game resumes after closing
         }
 
-        //randomDot.style.left = `${x}px`;
-        //randomDot.style.top = `${y}px`;
+        randomDot.style.left = `${x}px`;
+        randomDot.style.top = `${y}px`;
+        userDot.style.left = `${x}px`;
+        userDot.style.top = `${y}px`;
 
         /*console.log("User Positions:", userPositions);
         console.log("Follow Positions:", followPositions);
