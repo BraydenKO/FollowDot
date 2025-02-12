@@ -92,7 +92,7 @@
     <div class="random-dot"></div>
     <div class="modal-overlay" id="customAlert">
         <div class="modal">
-            <p>Your controls have been switched! Try to adapt quickly. Click OK to continue.</p>
+            <p></p>
             <button class="ok-button" id="okButton">OK</button>
         </div>
     </div>
@@ -272,7 +272,7 @@
             prevMouseY = e.clientY;
         }
 
-        function distanceToDot(save){
+        function distanceToDot(){
             dist = Math.sqrt((userDotX - x) ** 2 + (userDotY - y) ** 2)
             return dist;
     
@@ -432,14 +432,26 @@
             // Handles changing color of the user.
             // Right now the user is a shadow so idt it will change color
             //
-            /*if (distanceToDot() < 100){
-                userDot.style.backgroundColor = 'lime';
+            if (distanceToDot() < 100){
+                //userDot.style.backgroundColor = 'lime';
+                userDot.style.backgroundImage = "url('shadow_green.png')";
+                userDot.style.backgroundSize = 'contain';
+                userDot.style.backgroundPosition = 'center';
+                userDot.style.width = '60px';
+                userDot.style.height = '60px';
+                
                 //close_count += 1;
             }
             else{
-                userDot.style.backgroundColor = 'red';
+                //userDot.style.backgroundColor = 'red';
+                userDot.style.backgroundImage = "url('shadow.png')";
+                userDot.style.backgroundSize = 'contain';
+                userDot.style.backgroundPosition = 'center';
+                userDot.style.width = '50px';
+                userDot.style.height = '50px';
+                
             }
-            //total_counts += 1; */
+            //total_counts += 1;
             animframe = requestAnimationFrame(()=> play(t, phi));
         }
 
