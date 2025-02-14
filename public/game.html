@@ -166,10 +166,24 @@
 
         // From paper and normalized to screen size
         // Amplitude is deviation from middle of screen
-        const a_y = [0.2*height/2,0.2*height/2,0.2*height/2,0.15*height/2,0.11*height/2,0.08*height/2,0.06*height/2];
+
+        // Assume 1440x900
+        // Sum is 11.05 (useful for scaling)
+        const a_y = [2.31,2.31,2.31,1.58,1.03,0.81,0.70].map(n => 40*n); // 895px max height
+        // Max height is the sum of these amplitudes * 2 (the sum tells you how high above
+        // the center the fly will go)
+
+
+        if(height < 900){
+            a_y = [0.2*height/2,0.2*height/2,0.2*height/2,0.15*height/2,0.11*height/2,0.08*height/2,0.06*height/2];
+        }
         const freq_y = [0.1,0.25,0.55,0.85,1.15,1.55,2.05];
-         
-        const a_x = [0.21*width/2,0.21*width/2,0.21*width/2,0.14*width/2,0.09*width/2,0.07*width/2,0.06*width/2];
+        
+        // sum is 11.69 (useful for scaling values)
+        const a_x = [2.31,2.31,2.31,1.76,1.30,0.97,0.73].map(n => 61*n) // 1426px max width
+        if(width < 1440){ // If screen to small, just scale
+            a_x = [0.21*width/2,0.21*width/2,0.21*width/2,0.14*width/2,0.09*width/2,0.07*width/2,0.06*width/2];
+        }
         const freq_x = [0.15,0.35,0.65,0.95,1.45,1.85,2.15]
 
 
@@ -381,7 +395,9 @@
                 await setDoc(doc(db, "user_data", auth.currentUser.uid), {
                     trials: trials,
                     uid: auth.currentUser.uid,
-                    timestamp: Timestamp.fromDate(new Date())
+                    timestamp: Timestamp.fromDate(new Date()),
+                    width: width,
+                    height: height
                 });
                 console.log("User positions saved!");
             } catch (error) {
