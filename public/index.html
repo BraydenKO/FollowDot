@@ -73,7 +73,7 @@
         height: 700px;
     }
     
-    #consentCheckbox {
+    input[type="checkbox"] {
         width: 20px;
         height: 20px;
         font-size: 30px;
@@ -84,6 +84,13 @@
         font-size: 20px;
         text-align: left;
     }
+    #consentButton {
+      padding: 12px 24px; 
+      width: 150px;  
+      height: 50px;  
+      border-radius: 8px;  
+      cursor: pointer;
+  }
     </style>
 </head>
 <body>
@@ -157,8 +164,14 @@
       <div id="consentContainer">
           <embed id="consentPDF" src="consent_form.pdf#toolbar=0" type="application/pdf">
           <br>
+          <input type="checkbox" id="18Chechbox" required>
+          <label for="18Chechbox" class="consent-label">I am 18 years or older</label><br>
+
+          <input type="checkbox" id="readCheckbox" required>
+          <label for="readCheckbox" class="consent-label">I have read and understand the information above.</label><br>
+
           <input type="checkbox" id="consentCheckbox" required>
-          <label for="consentCheckbox" class="consent-label">I accept</label><br>
+          <label for="consentCheckbox" class="consent-label">I want to participate in this research and continue with the Eye-Hand Coordination Task</label><br>
       </div>
 
       <div id="errorMessages" class="error"></div>
@@ -172,7 +185,7 @@
 
       const { db, auth } = initializeFirebase();
 
-      let do_upload = true;
+      let do_upload = false;
 
       async function uploadGameInput(inputDevice, playedBefore, age, handedness, gender){
         console.log("Uploading data...");
@@ -223,13 +236,17 @@
             
           });
           document.getElementById('consentButton').addEventListener('click', async () => {
+            var eighteen = document.getElementById('18Chechbox').checked;
+            var read = document.getElementById('readCheckbox').checked;
             var consent = document.getElementById('consentCheckbox').checked;
-            localStorage.setItem('fullscreenIntent', 'true');
-            if (!consent) {
+
+            
+            if (!(eighteen && read && consent)) {
               alert('You must accept the consent form');
               
             }
             else {
+              localStorage.setItem('fullscreenIntent', 'true');
               window.location.href = 'game.html';
             }
           });
