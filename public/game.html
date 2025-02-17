@@ -120,6 +120,7 @@
     "></div>
     <div class="corner-number" id="number">0</div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <script type="module">
         //document.getElementById('customAlert').style.display = 'none';
         //TODO Add COMMENTS!!!
@@ -145,12 +146,12 @@
 
         // CHANGE these to change the game mode lengths and how many trials are run.
         const game_type_lengths = {
-            "normal": 1_000, // ms
-            "reverse": 1_000,
+            "normal": 45_000, // ms
+            "reverse": 45_000,
         }
-        const n_controls = 2;
-        const n_perturbs = 1;
-        const n_posts = 1;
+        const n_controls = 16; // Must be even
+        const n_perturbs = 32; // Must be a multiple of 4
+        const n_posts = 4;
         
         // This just says the first game is normal mode.
         let game_type = "normal";
@@ -223,6 +224,7 @@
         let dt = 2000; // milliseconds per t. HIGHER values lead to slower fly
         let start;
         let post = -1; // -1 to signal it's not in post mode
+        let change_window = true;
 
         function goFullscreen() {
 
@@ -406,20 +408,65 @@
             document.addEventListener('mousemove', currentMousemoveHandler);
         }
 
+        async function uploadDoc(start, end, tag){
+            if (start === end){return; } 
+            let entries = Object.entries(trials).slice(start, end);
+            let trial_data = Object.fromEntries(entries);
+            await setDoc(doc(db, "user_data", auth.currentUser.uid + tag), {
+                trials: trial_data,
+                uid: auth.currentUser.uid,
+                timestamp: Timestamp.fromDate(new Date()),
+                width: width,
+                height: height
+            });
+        }
+
+        // This was given up since it might not compress enough
+        /*async function uploadCompressedData(trial_data) {
+            // Convert trial_data to JSON string
+            const jsonString = JSON.stringify(trial_data);
+        
+            // Compress using pako (gzip)
+            const compressedData = pako.deflate(jsonString, { to: "string" });
+        
+            // Convert compressed data (Uint8Array) to Base64 string
+            const base64CompressedData = btoa(String.fromCharCode(...compressedData));
+        
+            // Store in Firestore
+            await setDoc(doc(db, "user_data", auth.currentUser.uid), {
+                trials: base64CompressedData,  // Store base64-encoded string
+                uid: auth.currentUser.uid,
+                timestamp: Timestamp.fromDate(new Date()),
+                width: width,
+                height: height
+            });
+        
+            console.log("Compressed data uploaded successfully.");
+        }*/
+
+
         async function uploadDotData() {
+            trial_num.textContent = "Please wait for data to be processed and uploaded (It's a lot of data).";
+            trial_num.style.top = '10px';   // Set top position
+            trial_num.style.left = '50%';   // Center horizontally
+            trial_num.style.transform = 'translateX(-50%)'; // Adjust for perfect centering
             try {
-                console.log(trials)
-                await setDoc(doc(db, "user_data", auth.currentUser.uid), {
-                    trials: trials,
-                    uid: auth.currentUser.uid,
-                    timestamp: Timestamp.fromDate(new Date()),
-                    width: width,
-                    height: height
-                });
+                // Uploads 7 docs because the total space for the data exceeds 1Mb by quite a bit
+                await uploadDoc(0, Math.floor(n_controls/2), "-control1");
+                await uploadDoc(Math.floor(n_controls/2), n_controls, "-control2");
+
+                await uploadDoc(n_controls, n_controls + Math.floor(n_perturbs/4), "-perturb1");
+                await uploadDoc(n_controls + Math.floor(n_perturbs/4), n_controls + Math.floor(n_perturbs/2), "-perturb2");
+                await uploadDoc(n_controls + Math.floor(n_perturbs/2), n_controls + Math.floor(3*n_perturbs/4), "-perturb3");
+                await uploadDoc(n_controls + Math.floor(3*n_perturbs/4), n_controls + n_perturbs, "-perturb4");
+
+                await uploadDoc(n_controls + n_perturbs, n_controls + n_perturbs + n_posts, "-post");
+                //await uploadCompressedData(trials);
                 console.log("User positions saved!");
             } catch (error) {
                 console.error("Firestore write error:", error.message);
                 console.error("Error details:", error);
+                change_window = false;
             }
         }
 
@@ -455,7 +502,9 @@
                 if (do_upload){
                     await uploadDotData();
                 }
-                window.location.href = `done.html`;
+                if(change_window){
+                    window.location.href = `done.html`;
+                }
                 return;
             }
             t = (Date.now() - start)/dt
