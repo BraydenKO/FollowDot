@@ -81,7 +81,16 @@
             left: 50%;
             transform: translateX(-50%);
         }
-
+        .corner-number {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            color: black;
+            padding: 10px;
+            border-radius: 50%;
+            font-size: 20px;
+            font-weight: bold;
+        }
         
         
         
@@ -109,7 +118,7 @@
         border-radius: 5px;
         display: none;
     "></div>
-    
+    <div class="corner-number" id="number">0</div>
 
     <script type="module">
         //document.getElementById('customAlert').style.display = 'none';
@@ -136,12 +145,12 @@
 
         // CHANGE these to change the game mode lengths and how many trials are run.
         const game_type_lengths = {
-            "normal": 45_000, // ms
-            "reverse": 45_000,
+            "normal": 1_000, // ms
+            "reverse": 1_000,
         }
-        const n_controls = 16;
-        const n_perturbs = 32;
-        const n_posts = 4;
+        const n_controls = 2;
+        const n_perturbs = 1;
+        const n_posts = 1;
         
         // This just says the first game is normal mode.
         let game_type = "normal";
@@ -149,6 +158,7 @@
         // Get the dots/fly and the window size
         const userDot = document.querySelector('.user-dot');
         const randomDot = document.querySelector('.random-dot');
+        const trial_num = document.getElementById("number");
         const width = window.screen.width;
         const height = window.screen.height;
 
@@ -581,7 +591,7 @@
                 console.log(`Game type changed to ${mode}`);
 
                 function runTrial(remainingTrials) {
-                    
+                    trial_num.textContent = remainingTrials;
                     start = Date.now();
                     if(remainingTrials <=0){ throw new Error("Remaining trials must be positive"); }
                     
