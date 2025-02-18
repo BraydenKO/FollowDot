@@ -635,11 +635,9 @@
 
         function addTrialData(){
             trials[trial]={
-                "distances":distances,
                 "userPositions":userPositions,
                 "flyPositions":followPositions,
                 "phis": phis[phis.length - 1], // keep the last phis
-                "num_phis":phis.length, // TEMP for testing
             }
             trial++;
             distances = [];
