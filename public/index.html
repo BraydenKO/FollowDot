@@ -190,7 +190,7 @@
 
       async function uploadGameInput(inputDevice, playedBefore, age, handedness, gender){
         console.log("Uploading data...");
-        await setDoc(doc(db, "game_inputs", auth.currentUser.uid), {
+        await setDoc(doc(db, auth.currentUser.uid, "game_inputs"), {
           inputDevice: inputDevice,
           playedBefore: playedBefore,
           age: age,

@@ -411,7 +411,7 @@
             if (start === end){return; } 
             let entries = Object.entries(trials).slice(start, end);
             let trial_data = Object.fromEntries(entries);
-            await setDoc(doc(db, "user_data", auth.currentUser.uid + tag), {
+            await setDoc(doc(db, auth.currentUser.uid, tag), {
                 trials: trial_data,
                 uid: auth.currentUser.uid,
                 timestamp: Timestamp.fromDate(new Date()),
@@ -454,17 +454,17 @@
             try {
                 // Uploads 7 docs because the total space for the data exceeds 1Mb by quite a bit
                 if (mode === "normal"){
-                    await uploadDoc(0, Math.floor(n_controls/2), "-control1");
-                    await uploadDoc(Math.floor(n_controls/2), n_controls, "-control2");
+                    await uploadDoc(0, Math.floor(n_controls/2), "control1");
+                    await uploadDoc(Math.floor(n_controls/2), n_controls, "control2");
                 }
                 else if (mode === "reverse"){
-                    await uploadDoc(n_controls, n_controls + Math.floor(n_perturbs/4), "-perturb1");
-                    await uploadDoc(n_controls + Math.floor(n_perturbs/4), n_controls + Math.floor(n_perturbs/2), "-perturb2");
-                    await uploadDoc(n_controls + Math.floor(n_perturbs/2), n_controls + Math.floor(3*n_perturbs/4), "-perturb3");
-                    await uploadDoc(n_controls + Math.floor(3*n_perturbs/4), n_controls + n_perturbs, "-perturb4");
+                    await uploadDoc(n_controls, n_controls + Math.floor(n_perturbs/4), "perturb1");
+                    await uploadDoc(n_controls + Math.floor(n_perturbs/4), n_controls + Math.floor(n_perturbs/2), "perturb2");
+                    await uploadDoc(n_controls + Math.floor(n_perturbs/2), n_controls + Math.floor(3*n_perturbs/4), "perturb3");
+                    await uploadDoc(n_controls + Math.floor(3*n_perturbs/4), n_controls + n_perturbs, "perturb4");
                 }
                 else{
-                    await uploadDoc(n_controls + n_perturbs, n_controls + n_perturbs + n_posts, "-post");
+                    await uploadDoc(n_controls + n_perturbs, n_controls + n_perturbs + n_posts, "post");
                 }
 
                 

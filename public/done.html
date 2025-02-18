@@ -103,7 +103,7 @@
                     document.getElementById("popup").style.display = "none";
                     document.getElementById("overlay").style.display = "none";
 
-                    const docRef = doc(db, "game_inputs", auth.currentUser.uid);
+                    const docRef = doc(db, auth.currentUser.uid, "game_inputs");
                     // Update specific fields
                     updateDoc(docRef, {
                         finalAnswer: select.value,
