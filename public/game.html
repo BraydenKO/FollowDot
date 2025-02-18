@@ -145,12 +145,12 @@
 
         // CHANGE these to change the game mode lengths and how many trials are run.
         const game_type_lengths = {
-            "normal": 45_000, // ms
-            "reverse": 45_000,
+            "normal": 1_000, // ms
+            "reverse": 1_000,
         }
-        const n_controls = 16; // Must be even
-        const n_perturbs = 32; // Must be a multiple of 4
-        const n_posts = 4;
+        const n_controls = 1; // Must be even
+        const n_perturbs = 1; // Must be a multiple of 4
+        const n_posts = 1;
         
         // This just says the first game is normal mode.
         let game_type = "normal";
@@ -213,6 +213,7 @@
         let followPositions = [];
 
         let distances = [];
+        let allDistances = [];
         let highlights = [];
         let phis = [];
         let animframe;
@@ -483,27 +484,31 @@
         }
 
         function getHighlights(){
-            const cumSum = (sum => value => sum += value)(0);
 
-            const cumulativeLengths = distances.map(cumSum);
+            // Flatten all distances into a single array
+            const distance_data_1d = allDistances.flat();
 
+            const cumulativeLengths = allDistances.reduce((acc, arr) => {
+                acc.push((acc.length > 0 ? acc[acc.length - 1] : 0) + arr.length);
+                return acc;
+            }, []);
             const newHighlights = [cumulativeLengths[n_controls-1],
                                    cumulativeLengths[n_controls + n_perturbs-1],
                                    cumulativeLengths[n_controls + n_perturbs + n_posts-1]];
             console.log(cumulativeLengths);
             console.log(newHighlights);
             
-            return newHighlights;
+            return {distance_data_1d, newHighlights};
         }
 
         async function play(t, phi) {
             if (game_type === "done") {
                 console.log("Game done");
-                const newHighlights = getHighlights();
-                const { sectionSizes, percentages } = calculateDistancePercentages(distances);
+                const {distance_data_1d,newHighlights} = getHighlights();
+                const { sectionSizes, percentages } = calculateDistancePercentages(distance_data_1d);
                 localStorage.setItem('sectionSizes', JSON.stringify(Object.values(sectionSizes)));
                 localStorage.setItem('percentages', JSON.stringify(percentages));
-                localStorage.setItem('distances', JSON.stringify(distances));
+                localStorage.setItem('distances', JSON.stringify(distance_data_1d));
                 localStorage.setItem('game_timelegths', JSON.stringify(game_type_lengths));
                 localStorage.setItem('highlights', JSON.stringify(newHighlights));
                 if (do_upload){
@@ -634,6 +639,8 @@
                 "phis": phis[phis.length - 1], // keep the last phis
             }
             trial++;
+            allDistances.push(distances);
+            distances = [];
             userPositions = [];
             followPositions = [];
         }
