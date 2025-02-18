@@ -482,34 +482,28 @@
 
         }
 
-        function getDistances(){
+        function getHighlights(){
+            const cumSum = (sum => value => sum += value)(0);
 
-            const distanceArrays = Object.values(trials).map(obj => obj.distances);
+            const cumulativeLengths = distances.map(cumSum);
 
-            // Flatten all distances into a single array
-            const allDistances = distanceArrays.flat();
-
-            const cumulativeLengths = distanceArrays.reduce((acc, arr) => {
-                acc.push((acc.length > 0 ? acc[acc.length - 1] : 0) + arr.length);
-                return acc;
-            }, []);
             const newHighlights = [cumulativeLengths[n_controls-1],
                                    cumulativeLengths[n_controls + n_perturbs-1],
                                    cumulativeLengths[n_controls + n_perturbs + n_posts-1]];
             console.log(cumulativeLengths);
             console.log(newHighlights);
             
-            return {allDistances, newHighlights};
+            return newHighlights;
         }
 
         async function play(t, phi) {
             if (game_type === "done") {
                 console.log("Game done");
-                const { allDistances, newHighlights } = getDistances();
-                const { sectionSizes, percentages } = calculateDistancePercentages(allDistances);
+                const newHighlights = getHighlights();
+                const { sectionSizes, percentages } = calculateDistancePercentages(distances);
                 localStorage.setItem('sectionSizes', JSON.stringify(Object.values(sectionSizes)));
                 localStorage.setItem('percentages', JSON.stringify(percentages));
-                localStorage.setItem('distances', JSON.stringify(allDistances));
+                localStorage.setItem('distances', JSON.stringify(distances));
                 localStorage.setItem('game_timelegths', JSON.stringify(game_type_lengths));
                 localStorage.setItem('highlights', JSON.stringify(newHighlights));
                 if (do_upload){
@@ -640,7 +634,6 @@
                 "phis": phis[phis.length - 1], // keep the last phis
             }
             trial++;
-            distances = [];
             userPositions = [];
             followPositions = [];
         }
