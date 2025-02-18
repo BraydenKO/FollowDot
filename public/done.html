@@ -32,6 +32,38 @@
             background-color: white; /* Optional: set a background color */
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
+
+        .popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 1000;
+        }
+        .popup select {
+            margin: 10px 0;
+            padding: 5px;
+        }
+        .popup button {
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
@@ -43,15 +75,59 @@
         <canvas id="resultsChart" width="400" height="200"></canvas>
         <canvas id="distanceChart" width="400" height="200"></canvas>
     </div>
+    <div class="overlay" id="overlay"></div>
+    <div class="popup" id="popup">
+        <p>When your controls were changed, moving up would have moved your fly ___</p>
+        <select id="answer">
+            <option value="" disabled selected>Pick a direction</option>
+            <option value="up">up</option>
+            <option value="down">down</option>
+            <option value="left">left</option>
+            <option value="right">right</option>
+        </select>
+        <button onclick="closePopup()">Submit</button>
+    </div>
     <script type="module">
         import { signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';; 
         import { initializeFirebase } from './firebaseConfig.js';
         
         const { db, auth } = initializeFirebase();
 
         const dt = 50 //ms
 
+        window.onload = function() {
+            function closePopup() {
+                const select = document.getElementById("answer");
+                if (select.value) {
+                    document.getElementById("popup").style.display = "none";
+                    document.getElementById("overlay").style.display = "none";
+
+                    const docRef = doc(db, "game_inputs", auth.currentUser.uid);
+                    // Update specific fields
+                    updateDoc(docRef, {
+                        finalAnswer: select.value,
+                    })
+                    .then(() => {
+                        console.log("Document successfully updated!");
+                    })
+                    .catch((error) => {
+                        console.error("Error updating document: ", error);
+                    });
+                } else {
+                    alert("Please select an option before submitting.");
+                }
+            }
+            window.closePopup = closePopup; // Ensure the function is globally accessible
+        };
+        
+
         document.addEventListener('click', async (event) => {
+            const popup = document.getElementById("popup");
+            if (popup.contains(event.target)) {
+                return; // Ignore clicks inside the popup
+            }
+
             event.preventDefault();
             const userConfirmed = confirm("Are you sure you want to exit?");
             if (userConfirmed) {

@@ -88,7 +88,7 @@
             color: black;
             padding: 10px;
             border-radius: 50%;
-            font-size: 20px;
+            font-size: 80px;
             font-weight: bold;
         }
         
@@ -124,7 +124,7 @@
     <script type="module">
         //document.getElementById('customAlert').style.display = 'none';
         //TODO Add COMMENTS!!!
-        let do_upload = true;
+        let do_upload = false;
 
 
         // Make sure user can only come to this page after filling in their details
@@ -146,12 +146,12 @@
 
         // CHANGE these to change the game mode lengths and how many trials are run.
         const game_type_lengths = {
-            "normal": 45_000, // ms
-            "reverse": 45_000,
+            "normal": 2_000, // ms
+            "reverse": 2_000,
         }
-        const n_controls = 16; // Must be even
-        const n_perturbs = 32; // Must be a multiple of 4
-        const n_posts = 4;
+        const n_controls = 2; // Must be even
+        const n_perturbs = 4; // Must be a multiple of 4
+        const n_posts = 1;
         
         // This just says the first game is normal mode.
         let game_type = "normal";
@@ -445,22 +445,28 @@
         }*/
 
 
-        async function uploadDotData() {
+        async function uploadDotData(mode) {
             trial_num.textContent = "Please wait for data to be processed and uploaded (It's a lot of data).";
             trial_num.style.top = '10px';   // Set top position
             trial_num.style.left = '50%';   // Center horizontally
             trial_num.style.transform = 'translateX(-50%)'; // Adjust for perfect centering
             try {
                 // Uploads 7 docs because the total space for the data exceeds 1Mb by quite a bit
-                await uploadDoc(0, Math.floor(n_controls/2), "-control1");
-                await uploadDoc(Math.floor(n_controls/2), n_controls, "-control2");
+                if (mode === "control"){
+                    await uploadDoc(0, Math.floor(n_controls/2), "-control1");
+                    await uploadDoc(Math.floor(n_controls/2), n_controls, "-control2");
+                }
+                else if (mode === "perturb"){
+                    await uploadDoc(n_controls, n_controls + Math.floor(n_perturbs/4), "-perturb1");
+                    await uploadDoc(n_controls + Math.floor(n_perturbs/4), n_controls + Math.floor(n_perturbs/2), "-perturb2");
+                    await uploadDoc(n_controls + Math.floor(n_perturbs/2), n_controls + Math.floor(3*n_perturbs/4), "-perturb3");
+                    await uploadDoc(n_controls + Math.floor(3*n_perturbs/4), n_controls + n_perturbs, "-perturb4");
+                }
+                else{
+                    await uploadDoc(n_controls + n_perturbs, n_controls + n_perturbs + n_posts, "-post");
+                }
 
-                await uploadDoc(n_controls, n_controls + Math.floor(n_perturbs/4), "-perturb1");
-                await uploadDoc(n_controls + Math.floor(n_perturbs/4), n_controls + Math.floor(n_perturbs/2), "-perturb2");
-                await uploadDoc(n_controls + Math.floor(n_perturbs/2), n_controls + Math.floor(3*n_perturbs/4), "-perturb3");
-                await uploadDoc(n_controls + Math.floor(3*n_perturbs/4), n_controls + n_perturbs, "-perturb4");
-
-                await uploadDoc(n_controls + n_perturbs, n_controls + n_perturbs + n_posts, "-post");
+                
                 //await uploadCompressedData(trials);
                 console.log("User positions saved!");
             } catch (error) {
@@ -468,6 +474,10 @@
                 console.error("Error details:", error);
                 change_window = false;
             }
+            trial_num.textContent = "0";
+            trial_num.style.left = '';
+            trial_num.style.transform = '';
+
         }
 
         function getDistances(){
@@ -492,6 +502,7 @@
 
         async function play(t, phi) {
             if (game_type === "done") {
+                console.log("Game done");
                 const { allDistances, newHighlights } = getDistances();
                 const { sectionSizes, percentages } = calculateDistancePercentages(allDistances);
                 localStorage.setItem('sectionSizes', JSON.stringify(Object.values(sectionSizes)));
@@ -500,7 +511,7 @@
                 localStorage.setItem('game_timelegths', JSON.stringify(game_type_lengths));
                 localStorage.setItem('highlights', JSON.stringify(newHighlights));
                 if (do_upload){
-                    await uploadDotData();
+                    await uploadDotData("post");
                 }
                 if(change_window){
                     window.location.href = `done.html`;
@@ -664,7 +675,14 @@
                             stopRecordPos(intervalId);
                             //highlights.push(distances.length);
                             addTrialData();
-                            showAlert(`Great Job! Now, your controls will be switched! Try to adapt quickly. Click OK to continue.`, () => {
+                            let msg;
+                            if (game_type === "reverse"){
+                                msg = 'Great Job! Now, your controls will switched back to normal! Click OK to continue.';
+                            }
+                            else{
+                                msg = 'Great Job! Now, your controls will be switched! Try to adapt quickly. Click OK to continue.';
+                            }
+                            showAlert(msg, () => {
                                 //close_count = 0;
                                 //total_counts = 0;
                                 
@@ -702,12 +720,14 @@
             placeDot();
             await pauseFollowDotMotion(0.5); 
             await next_mode("normal", n_controls, false);
-            
+            if(do_upload){await uploadDotData("control");} 
+
             game_type = "reverse";
             setMousemoveHandler();
             placeDot();
             await pauseFollowDotMotion(0.5); // Pause for 2 second
             await next_mode("reverse", n_perturbs, false);
+            if(do_upload){await uploadDotData("perturb");} 
 
             game_type = "normal";
             post = 0;
