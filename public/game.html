@@ -145,12 +145,12 @@
 
         // CHANGE these to change the game mode lengths and how many trials are run.
         const game_type_lengths = {
-            "normal": 1_000, // ms
-            "reverse": 1_000,
+            "normal": 45_000, // ms
+            "reverse": 45_000,
         }
-        const n_controls = 1; // Must be even
-        const n_perturbs = 1; // Must be a multiple of 4
-        const n_posts = 1;
+        const n_controls = 16; // Must be even
+        const n_perturbs = 32; // Must be a multiple of 4
+        const n_posts = 4;
         
         // This just says the first game is normal mode.
         let game_type = "normal";
