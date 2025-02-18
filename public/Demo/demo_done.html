@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center; /* Center horizontally */
+            align-items: center;     /* Center vertically */
+            min-height: 100vh;      /* Ensure full viewport height */
+            margin: 0;             /* Remove default margins */
+            background-color: #f0f0f0; /* Light gray background (optional) */
+            font-family: sans-serif; /* Use a sans-serif font */
+        }
+
+        h1 {
+            font-size: 3em;         /* Make the text large */
+            color: #333;           /* Dark gray text color (optional) */
+            text-align: center; /* Center text within the h1 */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2); /* Add a subtle text shadow */
+        }
+
+        #container{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px; /* Add some padding around the content */
+            border: 1px solid #ccc; /* Optional: add a border */
+            border-radius: 8px; /* Optional: round the corners */
+            background-color: white; /* Optional: set a background color */
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 1000;
+        }
+        .popup select {
+            margin: 10px 0;
+            padding: 5px;
+        }
+        .popup button {
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
+</head>
+<body>
+    <div id="container">
+        <h1>Thank You for Playing!</h1>
+        <canvas id="resultsChart" width="400" height="200"></canvas>
+        <canvas id="distanceChart" width="400" height="200"></canvas>
+    </div>
+    <div class="overlay" id="overlay"></div>
+    <div class="popup" id="popup">
+        <p>When your controls were changed, moving up would have moved your fly ___</p>
+        <select id="answer">
+            <option value="" disabled selected>Pick a direction</option>
+            <option value="up">up</option>
+            <option value="down">down</option>
+            <option value="left">left</option>
+            <option value="right">right</option>
+        </select>
+        <button onclick="closePopup()">Submit</button>
+    </div>
+    <script type="module">
+        import { signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';; 
+        import { initializeFirebase } from '../firebaseConfig.js';
+        
+        const { db, auth } = initializeFirebase();
+
+        const dt = 50 //ms
+
+        window.onload = function() {
+            function closePopup() {
+                const select = document.getElementById("answer");
+                if (select.value) {
+                    document.getElementById("popup").style.display = "none";
+                    document.getElementById("overlay").style.display = "none";
+
+                    const docRef = doc(db, "Demo/Demo/" + auth.currentUser.uid, "game_inputs");
+                    // Update specific fields
+                    updateDoc(docRef, {
+                        finalAnswer: select.value,
+                    })
+                    .then(() => {
+                        console.log("Document successfully updated!");
+                    })
+                    .catch((error) => {
+                        console.error("Error updating document: ", error);
+                    });
+                } else {
+                    alert("Please select an option before submitting.");
+                }
+            }
+            window.closePopup = closePopup; // Ensure the function is globally accessible
+        };
+        
+
+        document.addEventListener('click', async (event) => {
+            const popup = document.getElementById("popup");
+            if (popup.contains(event.target)) {
+                return; // Ignore clicks inside the popup
+            }
+
+            event.preventDefault();
+            const userConfirmed = confirm("Are you sure you want to exit?");
+            if (userConfirmed) {
+                await signOut(auth);
+                window.location.href = 'index.html';
+            }
+        });
+
+        // Parse the sectionSizes, percentages, and distances from localStorage
+        const sectionSizes = JSON.parse(localStorage.getItem('sectionSizes'));
+        const percentages = JSON.parse(localStorage.getItem('percentages'));
+        const distances = JSON.parse(localStorage.getItem('distances'));
+        const game_timelegths = JSON.parse(localStorage.getItem('game_timelegths'));
+        const highlights = JSON.parse(localStorage.getItem('highlights'));
+
+        let control = game_timelegths["normal"]/dt;
+        let game = control + game_timelegths["reverse"]/dt;
+        let post = control + game;
+        console.log(control);
+        console.log(game);
+        console.log(post);
+        console.log(highlights)
+
+
+        // Render the bar chart
+        const ctxBar = document.getElementById('resultsChart').getContext('2d');
+        new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: sectionSizes,
+                datasets: [{
+                    label: 'Percentages',
+                    data: percentages,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+
+                            text: ['Intervals of Distance to the Green Dot (px)',
+                                   'For reference, the dots have a diameter of 20px']
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Percentage of time in this interval (%)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Render the line chart
+        const ctxLine = document.getElementById('distanceChart').getContext('2d');
+        new Chart(ctxLine, {
+            type: 'line',
+            data: {
+                labels: distances.map((_, index) => index + 1), // Use the index as the label
+                datasets: [{
+                    label: 'Distances Over Time',
+                    data: distances,
+                    backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                    borderColor: 'rgba(153, 102, 255, 1)',
+                    borderWidth: 1,
+                    fill: false
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Time (~' + dt + ' ms) (Red is normal tracking, Blue is reverse)'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Distance'
+                        }
+                    }
+                },
+                plugins: {
+                    annotation: {
+                        annotations: {
+                            highlightRegion1: {
+                                type: 'box',
+                                xMin: 0,  
+                                xMax: highlights[0], 
+                                yMin: 0,  
+                                yMax: 'max', 
+                                backgroundColor: 'rgba(255, 0, 0, 0.2)', 
+                                borderWidth: 0
+                            },
+                            highlightRegion2: {
+                                type: 'box',
+                                xMin: highlights[0],  
+                                xMax: highlights[1], 
+                                yMin: 0,  
+                                yMax: 'max', 
+                                backgroundColor: 'rgba(0, 0, 255, 0.2)', 
+                                borderWidth: 0
+                            },
+                            highlightRegion3: {
+                                type: 'box',
+                                xMin: highlights[1],  
+                                xMax: highlights[2], 
+                                yMin: 0,  
+                                yMax: 'max', 
+                                backgroundColor: 'rgba(255, 0, 0, 0.2)', 
+                                borderWidth: 0
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
