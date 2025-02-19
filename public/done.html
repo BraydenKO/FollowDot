@@ -77,7 +77,7 @@
     </div>
     <div class="overlay" id="overlay"></div>
     <div class="popup" id="popup">
-        <p>When your controls were changed, moving up would have moved your fly ___</p>
+        <p>Q1) When your controls were changed, moving up would have moved your fly ___</p>
         <select id="answer">
             <option value="" disabled selected>Pick a direction</option>
             <option value="up">up</option>
@@ -97,28 +97,49 @@
         const dt = 50 //ms
 
         window.onload = function() {
+            let qs_answered = 0;
+            let answers = ["", "", "", ""];
+        
             function closePopup() {
                 const select = document.getElementById("answer");
+                const questionText = document.querySelector("#popup p");
+        
                 if (select.value) {
-                    document.getElementById("popup").style.display = "none";
-                    document.getElementById("overlay").style.display = "none";
-
-                    const docRef = doc(db, auth.currentUser.uid, "game_inputs");
-                    // Update specific fields
-                    updateDoc(docRef, {
-                        finalAnswer: select.value,
-                    })
-                    .then(() => {
-                        console.log("Document successfully updated!");
-                    })
-                    .catch((error) => {
-                        console.error("Error updating document: ", error);
-                    });
+                    answers[qs_answered] = select.value;
+                    qs_answered++;
+        
+                    // Update question text based on progress
+                    if (qs_answered === 1) {
+                        questionText.textContent = "Q2) When your controls were changed, moving down would have moved your fly ___";
+                        select.value = ""; // Reset dropdown
+                    } else if (qs_answered === 2) {
+                        questionText.textContent = "Q3) When your controls were changed, moving right would have moved your fly ___";
+                        select.value = "";
+                    } else if (qs_answered === 3) {
+                        questionText.textContent = "Q4) When your controls were changed, moving left would have moved your fly ___";
+                        select.value = "";
+                    } else if (qs_answered === 4) {
+                        // Hide popup after the last question
+                        document.getElementById("popup").style.display = "none";
+                        document.getElementById("overlay").style.display = "none";
+        
+                        const docRef = doc(db, auth.currentUser.uid, "game_inputs");
+                        updateDoc(docRef, {
+                            finalAnswer: answers
+                        })
+                        .then(() => {
+                            console.log("Document successfully updated!");
+                        })
+                        .catch((error) => {
+                            console.error("Error updating document: ", error);
+                        });
+                    }
                 } else {
                     alert("Please select an option before submitting.");
                 }
             }
-            window.closePopup = closePopup; // Ensure the function is globally accessible
+        
+            window.closePopup = closePopup; // Ensure function is globally accessible
         };
         
 

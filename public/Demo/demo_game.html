@@ -148,9 +148,9 @@
             "normal": 20_000, // ms
             "reverse": 20_000,
         }
-        const n_controls = 1; 
+        const n_controls = 2; 
         const n_perturbs = 4; 
-        const n_posts = 1; 
+        const n_posts = 2; 
         
         // This just says the first game is normal mode.
         let game_type = "normal";
@@ -225,6 +225,7 @@
         let start;
         let post = -1; // -1 to signal it's not in post mode
         let change_window = true;
+        let trials_left = n_controls + n_perturbs + n_posts;
 
         function goFullscreen() {
 
@@ -647,7 +648,8 @@
                 console.log(`Game type changed to ${mode}`);
 
                 function runTrial(remainingTrials) {
-                    trial_num.textContent = remainingTrials;
+                    trial_num.textContent = trials_left;
+                    trials_left--;
                     start = Date.now();
                     if(remainingTrials <=0){ throw new Error("Remaining trials must be positive"); }
                     
