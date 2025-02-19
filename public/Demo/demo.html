@@ -162,7 +162,7 @@
   </div>
   <form id="consentForm" action="demo_game.html" method="get">
       <div id="consentContainer">
-          <embed id="consentPDF" src="../consent_form.pdf#toolbar=0" type="application/pdf">
+          <embed id="consentPDF" src="consent_form.pdf#toolbar=0" type="application/pdf">
           <br>
           <input type="checkbox" id="18Chechbox" required>
           <label for="18Chechbox" class="consent-label">I am 18 years or older</label><br>
@@ -179,7 +179,7 @@
   </form>
   <div id="app"></div>
   <script type="module">
-      import { initializeFirebase } from '../firebaseConfig.js'; // Updated path
+      import { initializeFirebase } from './firebaseConfig.js'; // Updated path
       import { doc, setDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
       import { signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
