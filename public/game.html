@@ -146,11 +146,12 @@
         // CHANGE these to change the game mode lengths and how many trials are run.
         const game_type_lengths = {
             "normal": 45_000, // ms
-            "reverse": 45_000,
+            "rotate": 45_000,
         }
         const n_controls = 16; // Must be even
         const n_perturbs = 32; // Must be a multiple of 4
         const n_posts = 4;
+        const perturb_style= "rotate";
         
         // This just says the first game is normal mode.
         let game_type = "normal";
@@ -268,24 +269,15 @@
             userDot.style.top = `${userDotY}px`;
         }
 
-        // CURRENTLY unused
         function moveUserOffsetRadians(e) {
-            const radians = Math.PI / 4;
-
-            if (prevMouseX === null || prevMouseY === null) {
-                prevMouseX = e.clientX;
-                prevMouseY = e.clientY;
-                userDot.style.left = `${userDotX}px`;
-                userDot.style.top = `${userDotY}px`;
-                return; // Don't move on the first frame
-            }
+            const radians = Math.PI / 2;
 
             const deltaX = e.clientX - prevMouseX;
             const deltaY = e.clientY - prevMouseY;
 
             // Rotate the delta
-            const rotatedDeltaX = deltaX * Math.cos(radians) - deltaY * Math.sin(radians);
-            const rotatedDeltaY = deltaX * Math.sin(radians) + deltaY * Math.cos(radians);
+            const rotatedDeltaX = e.movementX * Math.cos(radians) - e.movementY * Math.sin(radians);
+            const rotatedDeltaY = e.movementX * Math.sin(radians) + e.movementY * Math.cos(radians);
 
             userDotX += rotatedDeltaX;
             userDotY += rotatedDeltaY;
@@ -296,8 +288,6 @@
             userDot.style.left = `${userDotX}px`;
             userDot.style.top = `${userDotY}px`;
 
-            prevMouseX = e.clientX;
-            prevMouseY = e.clientY;
         }
 
         function distanceToDot(){
@@ -394,15 +384,13 @@
                 document.removeEventListener('mousemove', currentMousemoveHandler);
             }
 
-
-
             if (game_type === "normal") {
                 currentMousemoveHandler = moveUser;
             } else if (game_type === "reverse") {
                 
 
                 currentMousemoveHandler = moveUserReverseXY;
-            } else if (game_type === "offset") {
+            } else if (game_type === "rotate") {
                 currentMousemoveHandler = moveUserOffsetRadians;
             }
 
@@ -459,11 +447,11 @@
                     await uploadDoc(0, Math.floor(n_controls/2), "control1");
                     await uploadDoc(Math.floor(n_controls/2), n_controls, "control2");
                 }
-                else if (mode === "reverse"){
-                    await uploadDoc(n_controls, n_controls + Math.floor(n_perturbs/4), "perturb1");
-                    await uploadDoc(n_controls + Math.floor(n_perturbs/4), n_controls + Math.floor(n_perturbs/2), "perturb2");
-                    await uploadDoc(n_controls + Math.floor(n_perturbs/2), n_controls + Math.floor(3*n_perturbs/4), "perturb3");
-                    await uploadDoc(n_controls + Math.floor(3*n_perturbs/4), n_controls + n_perturbs, "perturb4");
+                else if (mode === perturb_style){
+                    await uploadDoc(n_controls, n_controls + Math.floor(n_perturbs/4), perturb_style + "1");
+                    await uploadDoc(n_controls + Math.floor(n_perturbs/4), n_controls + Math.floor(n_perturbs/2), perturb_style + "2");
+                    await uploadDoc(n_controls + Math.floor(n_perturbs/2), n_controls + Math.floor(3*n_perturbs/4), perturb_style + "3");
+                    await uploadDoc(n_controls + Math.floor(3*n_perturbs/4), n_controls + n_perturbs, perturb_style + "4");
                 }
                 else{
                     await uploadDoc(n_controls + n_perturbs, n_controls + n_perturbs + n_posts, "post");
@@ -678,7 +666,7 @@
                             //highlights.push(distances.length);
                             addTrialData();
                             let msg;
-                            if (game_type === "reverse"){
+                            if (game_type === perturb_style){
                                 msg = 'Great Job! Now, your controls will switched back to normal! Click OK to continue.';
                             }
                             else{
@@ -724,11 +712,11 @@
             await pauseFollowDotMotion(0.5); 
             await next_mode("normal", n_controls, false);
 
-            game_type = "reverse";
+            game_type = perturb_style;
             setMousemoveHandler();
             placeDot();
             await pauseFollowDotMotion(0.5); // Pause for 2 second
-            await next_mode("reverse", n_perturbs, false);
+            await next_mode(perturb_style, n_perturbs, false);
 
             game_type = "normal";
             post = 0;
