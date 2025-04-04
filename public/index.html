@@ -6,12 +6,13 @@
       body {
           font-family: Arial, sans-serif;
           margin: 0;
-          padding: 0;
+          padding: 20px;
           display: flex;
           justify-content: center;
-          align-items: center;
-          height: 100vh;
+          align-items: flex-start;
+          min-height: 100vh;
           background-color: #f0f0f0;
+          overflow-y: auto;
       }
       #container {
           background-color: white;
@@ -74,11 +75,18 @@
         box-sizing: border-box;
         margin-top: 20px;
         display: block; 
+        position: relative;
+        overflow: auto;
+        max-height: 90vh;
     }
     
     #consentPDF {
-        width: 1000px;
-        height: 700px;
+        width: 100%;
+        max-width: 1000px;
+        height: 60vh;
+        max-height: 700px;
+        display: block;
+        margin: 0 auto;
     }
     
     input[type="checkbox"] {
@@ -98,6 +106,7 @@
       height: 50px;  
       border-radius: 8px;  
       cursor: pointer;
+      margin-top: 20px;
   }
     </style>
 </head>
@@ -161,21 +170,22 @@
             </select>
         </div>
     </div>
-    <div id = "blurb">
+    <div id="blurb">
       This game will take ~45 mins. In this game, you will control the fly's <span style="color: green;">shadow</span>. Your goal is to follow the moving <span style="color: purple;">fly</span> as closely as possible. Try to fit right behind it!
-  </div>
-  <div id = "blurb">
+    </div>
+    <div id="blurb">
       You will have a series of trials. And for one batch of trials, your controls may be changed, and this may happen multiple times.
-  </div>
-  <div id = "blurb">
-    We will let you know before your controls are changed.
-</div>
-  <div id = "blurb">
+    </div>
+    <div id="blurb">
+      We will let you know before your controls are changed.
+    </div>
+    <div id="blurb">
       Try to adjust as quickly as possible!
-  </div>
+    </div>
     <button id="start-button">Start Game</button>
   </div>
-  <form id="consentForm" action="game.html" method="get">
+  
+  <form id="consentForm" action="game.html" method="get" style="display:none; position:relative; max-height: 100vh; overflow-y: auto;">
       <div id="consentContainer">
           <embed id="consentPDF" src="consent_form.pdf#toolbar=0" type="application/pdf">
           <br>
@@ -187,96 +197,101 @@
 
           <input type="checkbox" id="consentCheckbox" required>
           <label for="consentCheckbox" class="consent-label">I want to participate in this research and continue with the Eye-Hand Coordination Task</label><br>
+          
+          <button type="button" id="consentButton">Start</button>
       </div>
-
       <div id="errorMessages" class="error"></div>
-      <button type="button" id="consentButton">Start</button>
   </form>
+  
   <div id="app"></div>
+  
   <script type="module">
-      import { initializeFirebase } from './firebaseConfig.js'; // Updated path
+      import { initializeFirebase } from './firebaseConfig.js';
       import { doc, setDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
       import { signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
       const { db, auth } = initializeFirebase();
-
-      
       let do_upload = true;
 
-      async function uploadGameInput(prolificId, inputDevice, playedBefore, age, handedness, gender){
-        console.log("Uploading data...");
-        // Changed collection path to include prolific ID
-        const collectionPath = prolificId + "_" + auth.currentUser.uid;
-        
-        await setDoc(doc(db, collectionPath, "game_inputs"), {
-          prolificId: prolificId,
-          inputDevice: inputDevice,
-          playedBefore: playedBefore,
-          age: age,
-          handedness: handedness,
-          gender: gender,
-          uid: auth.currentUser.uid,
-          timestamp: Timestamp.fromDate(new Date())
-        });
-      }
-
+      // Hide consent form initially with proper positioning
       document.getElementById('consentForm').style.display = 'none';
 
+      async function uploadGameInput(prolificId, inputDevice, playedBefore, age, handedness, gender) {
+          console.log("Uploading data...");
+          // Changed collection path to include prolific ID
+          const collectionPath = prolificId + "_" + auth.currentUser.uid;
+          
+          await setDoc(doc(db, collectionPath, "game_inputs"), {
+              prolificId: prolificId,
+              inputDevice: inputDevice,
+              playedBefore: playedBefore,
+              age: age,
+              handedness: handedness,
+              gender: gender,
+              uid: auth.currentUser.uid,
+              timestamp: Timestamp.fromDate(new Date())
+          });
+      }
+
       signInAnonymously(auth)
-        .then(() => {
-          document.getElementById('start-button').addEventListener('click', async () => {
-            let prolificId = document.getElementById('prolific_id')?.value;
-            let inputDevice = document.getElementById('input_device')?.value;
-            let playedBefore = document.getElementById('played_before')?.value;
-            let age = document.getElementById('age')?.value;
-            let handedness = document.getElementById('handedness')?.value;
-            let gender = document.getElementById('gender')?.value;
+          .then(() => {
+              document.getElementById('start-button').addEventListener('click', async () => {
+                  let prolificId = document.getElementById('prolific_id')?.value;
+                  let inputDevice = document.getElementById('input_device')?.value;
+                  let playedBefore = document.getElementById('played_before')?.value;
+                  let age = document.getElementById('age')?.value;
+                  let handedness = document.getElementById('handedness')?.value;
+                  let gender = document.getElementById('gender')?.value;
 
-            if (!do_upload || (prolificId && inputDevice && playedBefore && age && handedness && gender)) { 
-              try {
-                if (do_upload){ 
-                  console.log("Data uploading...");
-                  await uploadGameInput(prolificId, inputDevice, playedBefore, age, handedness, gender);
-                  console.log("Data saved!");
-                }
-                
-                // Store prolific ID in local storage
-                localStorage.setItem('prolificId', prolificId);
-                sessionStorage.setItem('gameStarted', 'true');
-              } catch (error) {
-                console.error("Firestore write error:", error.message);
-                console.error("Error details:", error);
-                alert("Error saving data. Please try again.");
-              }
-              document.getElementById('container').style.display = 'none';
-              document.getElementById('consentForm').style.display = 'block';
-            } else {
-              alert("Please answer all questions.");
-            }
-
-
-            
-          });
-          document.getElementById('consentButton').addEventListener('click', async () => {
-            var eighteen = document.getElementById('18Chechbox').checked;
-            var read = document.getElementById('readCheckbox').checked;
-            var consent = document.getElementById('consentCheckbox').checked;
-
-            
-            if (!(eighteen && read && consent)) {
-              alert('You must accept the consent form');
+                  if (!do_upload || (prolificId && inputDevice && playedBefore && age && handedness && gender)) {
+                      try {
+                          if (do_upload) { 
+                              console.log("Data uploading...");
+                              await uploadGameInput(prolificId, inputDevice, playedBefore, age, handedness, gender);
+                              console.log("Data saved!");
+                          }
+                          
+                          // Store prolific ID in local storage
+                          localStorage.setItem('prolificId', prolificId);
+                          sessionStorage.setItem('gameStarted', 'true');
+                          
+                          // Hide container and show consent form
+                          document.getElementById('container').style.display = 'none';
+                          document.getElementById('consentForm').style.display = 'block';
+                          
+                          // Force layout recalculation to ensure offsetParent is set
+                          void document.getElementById('consentContainer').offsetHeight;
+                          
+                          // Scroll to top to ensure form is visible
+                          window.scrollTo(0, 0);
+                          
+                      } catch (error) {
+                          console.error("Firestore write error:", error.message);
+                          console.error("Error details:", error);
+                          alert("Error saving data. Please try again.");
+                      }
+                  } else {
+                      alert("Please answer all questions.");
+                  }
+              });
               
-            }
-            else {
-              localStorage.setItem('fullscreenIntent', 'true');
-              window.location.href = 'game.html';
-            }
+              document.getElementById('consentButton').addEventListener('click', async () => {
+                  var eighteen = document.getElementById('18Chechbox').checked;
+                  var read = document.getElementById('readCheckbox').checked;
+                  var consent = document.getElementById('consentCheckbox').checked;
+                  
+                  if (!(eighteen && read && consent)) {
+                      alert('You must accept the consent form');
+                  } else {
+                      localStorage.setItem('fullscreenIntent', 'true');
+                      window.location.href = 'game.html';
+                  }
+              });
+          })
+          .catch((error) => {
+              console.error("Auth Error:", error.message);
+              console.error("Error details:", error);
           });
-        })
-        .catch((error) => {
-          console.error("Auth Error:", error.message);
-          console.error("Error details:", error);
-        });
   </script>
 </body>
 </html>

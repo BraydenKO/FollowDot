@@ -142,8 +142,10 @@
         import { signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
         const { db, auth } = initializeFirebase();
-        let prolificId = sessionStorage.getItem('prolificId')
-        const collectionPath = prolificId + "_" + auth.currentUser.uid
+        
+        let prolificId = localStorage.getItem('prolificId')
+        let collectionPath;
+
 
         // CHANGE these to change the game mode lengths and how many trials are run.
         const game_type_lengths = {
@@ -788,6 +790,7 @@
         signInAnonymously(auth)
             .then(() => {
                 console.log("User signed in anonymously");
+                const collectionPath = prolificId + "_" + auth.currentUser.uid
 
             
                 startAlert("Welcome! Get ready to follow the fly. You will have a countdown above before the game begins on each trial. Press OK to begin and go fullscreen", ()=>{
