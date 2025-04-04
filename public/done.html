@@ -93,6 +93,8 @@
         import { initializeFirebase } from './firebaseConfig.js';
         
         const { db, auth } = initializeFirebase();
+        let prolificId = sessionStorage.getItem('prolificId')
+        const collectionPath = prolificId + "_" + auth.currentUser.uid
 
         const dt = 50 //ms
 
@@ -123,7 +125,7 @@
                         document.getElementById("popup").style.display = "none";
                         document.getElementById("overlay").style.display = "none";
         
-                        const docRef = doc(db, auth.currentUser.uid, "game_inputs");
+                        const docRef = doc(db, collectionPath, "game_inputs");
                         updateDoc(docRef, {
                             finalAnswer: answers
                         })

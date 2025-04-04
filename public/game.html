@@ -124,7 +124,7 @@
         //document.getElementById('customAlert').style.display = 'none';
         //TODO Add COMMENTS!!!
         let do_upload = true;
-
+        
 
         // Make sure user can only come to this page after filling in their details
         // And signing the consent form.
@@ -142,6 +142,8 @@
         import { signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
         const { db, auth } = initializeFirebase();
+        let prolificId = sessionStorage.getItem('prolificId')
+        const collectionPath = prolificId + "_" + auth.currentUser.uid
 
         // CHANGE these to change the game mode lengths and how many trials are run.
         const game_type_lengths = {
@@ -401,7 +403,8 @@
             if (start === end){return; } 
             let entries = Object.entries(trials).slice(start, end);
             let trial_data = Object.fromEntries(entries);
-            await setDoc(doc(db, auth.currentUser.uid, tag), {
+            
+            await setDoc(doc(db, collectionPath, tag), {
                 trials: trial_data,
                 uid: auth.currentUser.uid,
                 timestamp: Timestamp.fromDate(new Date()),

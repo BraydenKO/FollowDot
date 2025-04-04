@@ -33,6 +33,14 @@
           border: 1px solid #ccc;
           border-radius: 4px;
       }
+      input[type="number"], input[type="text"] {
+          width: 100%;
+          padding: 10px;
+          margin-top: 5px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          box-sizing: border-box;
+      }
       #start-button {
           display: block;
           width: 100%;
@@ -96,8 +104,15 @@
 <body>
   <div id="container">
     <h1 id="title">Mouse Follower Game</h1>
+    <!-- Added Prolific ID question -->
     <div class="question">
-        1) What are you using to play this game?
+        1) Please enter your Prolific ID:
+        <div class="options">
+            <input type="text" id="prolific_id" name="prolific_id" placeholder="Enter your Prolific ID" required>
+        </div>
+    </div>
+    <div class="question">
+        2) What are you using to play this game?
         <div class="options">
             <select id="input_device" name="input_device">
                 <option value="" disabled selected>Select your option</option>
@@ -109,7 +124,7 @@
         </div>
     </div>
     <div class="question">
-        2) Have you played this game before?
+        3) Have you played this game before?
         <div class="options">
             <select id="played_before" name="played_before">
                 <option value="" disabled selected>Select your option</option>
@@ -119,13 +134,13 @@
         </div>
     </div>
     <div class="question">
-        3) What is your age?
+        4) What is your age?
         <div class="options">
             <input type="number" id="age" name="age" min="1" max="120">
         </div>
     </div>
     <div class="question">
-        4) What is your handedness?
+        5) What is your handedness?
         <div class="options">
             <select id="handedness" name="handedness">
                 <option value="" disabled selected>Select your option</option>
@@ -136,7 +151,7 @@
         </div>
     </div>
     <div class="question">
-        5) What is your gender?
+        6) What is your gender?
         <div class="options">
             <select id="gender" name="gender">
                 <option value="" disabled selected>Select your option</option>
@@ -188,9 +203,13 @@
       
       let do_upload = true;
 
-      async function uploadGameInput(inputDevice, playedBefore, age, handedness, gender){
+      async function uploadGameInput(prolificId, inputDevice, playedBefore, age, handedness, gender){
         console.log("Uploading data...");
-        await setDoc(doc(db, auth.currentUser.uid, "game_inputs"), {
+        // Changed collection path to include prolific ID
+        const collectionPath = prolificId + "_" + auth.currentUser.uid;
+        
+        await setDoc(doc(db, collectionPath, "game_inputs"), {
+          prolificId: prolificId,
           inputDevice: inputDevice,
           playedBefore: playedBefore,
           age: age,
@@ -206,21 +225,23 @@
       signInAnonymously(auth)
         .then(() => {
           document.getElementById('start-button').addEventListener('click', async () => {
+            let prolificId = document.getElementById('prolific_id')?.value;
             let inputDevice = document.getElementById('input_device')?.value;
             let playedBefore = document.getElementById('played_before')?.value;
             let age = document.getElementById('age')?.value;
             let handedness = document.getElementById('handedness')?.value;
             let gender = document.getElementById('gender')?.value;
 
-            if (!do_upload || (inputDevice && playedBefore && age && handedness && gender)) { // If all options are selected
+            if (!do_upload || (prolificId && inputDevice && playedBefore && age && handedness && gender)) { 
               try {
                 if (do_upload){ 
                   console.log("Data uploading...");
-                  await uploadGameInput(inputDevice, playedBefore, age, handedness, gender);
+                  await uploadGameInput(prolificId, inputDevice, playedBefore, age, handedness, gender);
                   console.log("Data saved!");
                 }
                 
-
+                // Store prolific ID in local storage
+                localStorage.setItem('prolificId', prolificId);
                 sessionStorage.setItem('gameStarted', 'true');
               } catch (error) {
                 console.error("Firestore write error:", error.message);
