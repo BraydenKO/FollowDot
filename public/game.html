@@ -149,12 +149,12 @@
 
         // CHANGE these to change the game mode lengths and how many trials are run.
         const game_type_lengths = {
-            "normal": 45_000, // ms
-            "rotate": 45_000,
+            "normal": 2_000, // ms
+            "rotate": 2_000,
         }
-        const n_controls = 16; // Must be even
-        const n_perturbs = 32; // Must be a multiple of 4
-        const n_posts = 4;
+        const n_controls = 2; // Must be even
+        const n_perturbs = 4; // Must be a multiple of 4
+        const n_posts = 1;
         const perturb_style= "rotate";
         
         // This just says the first game is normal mode.
@@ -405,7 +405,7 @@
             if (start === end){return; } 
             let entries = Object.entries(trials).slice(start, end);
             let trial_data = Object.fromEntries(entries);
-            
+            let collectionPath = prolificId + "_" + auth.currentUser.uid
             await setDoc(doc(db, collectionPath, tag), {
                 trials: trial_data,
                 uid: auth.currentUser.uid,
@@ -790,7 +790,6 @@
         signInAnonymously(auth)
             .then(() => {
                 console.log("User signed in anonymously");
-                const collectionPath = prolificId + "_" + auth.currentUser.uid
 
             
                 startAlert("Welcome! Get ready to follow the fly. You will have a countdown above before the game begins on each trial. Press OK to begin and go fullscreen", ()=>{

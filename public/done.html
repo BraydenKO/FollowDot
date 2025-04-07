@@ -93,8 +93,8 @@
         import { initializeFirebase } from './firebaseConfig.js';
         
         const { db, auth } = initializeFirebase();
-        let prolificId = sessionStorage.getItem('prolificId')
-        const collectionPath = prolificId + "_" + auth.currentUser.uid
+        let prolificId = localStorage.getItem('prolificId')
+        
 
         const dt = 50 //ms
 
@@ -124,7 +124,8 @@
                         // Hide popup after the last question
                         document.getElementById("popup").style.display = "none";
                         document.getElementById("overlay").style.display = "none";
-        
+                        
+                        const collectionPath = prolificId + "_" + auth.currentUser.uid
                         const docRef = doc(db, collectionPath, "game_inputs");
                         updateDoc(docRef, {
                             finalAnswer: answers
