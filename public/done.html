@@ -1,4 +1,4 @@
-    <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -46,15 +46,30 @@
             flex-direction: column;
             align-items: center;
             z-index: 1000;
+            max-width: 80%;
+            width: 500px;
         }
+        
         .popup select {
             margin: 10px 0;
             padding: 5px;
+            width: 100%;
         }
+        
         .popup button {
-            padding: 5px 10px;
+            padding: 8px 15px;
             cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            margin-top: 10px;
         }
+        
+        .popup button:hover {
+            background-color: #45a049;
+        }
+        
         .overlay {
             position: fixed;
             top: 0;
@@ -63,6 +78,86 @@
             height: 100%;
             background: rgba(0, 0, 0, 0.5);
             z-index: 999;
+        }
+        
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+            width: 100%;
+        }
+        
+        .image-option {
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+        }
+        
+        .image-option.selected {
+            border-color: #4CAF50;
+            box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+        }
+        
+        .image-label {
+            margin: 0;
+            padding: 5px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            height: 40px; /* Fixed height for all labels */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+        
+        .image-option img {
+            width: 100%;
+            object-fit: contain;
+            display: block;
+            flex-grow: 1;
+        }
+        
+        /* Make question 2 popup larger */
+        #question2 {
+            max-width: 90%;
+            width: 800px;
+        }
+        
+        .image-option.selected {
+            border-color: #4CAF50;
+            box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            resize: vertical;
+        }
+        
+        .word-counter {
+            text-align: right;
+            font-size: 0.8em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .word-counter.error {
+            color: red;
+        }
+        
+        .hidden {
+            display: none;
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -76,87 +171,215 @@
         <canvas id="distanceChart" width="400" height="200"></canvas>
     </div>
     <div class="overlay" id="overlay"></div>
-    <div class="popup" id="popup">
-        <p>Q1) When your controls were changed, moving up would have moved your fly ___</p>
-        <select id="answer">
-            <option value="" disabled selected>Pick a direction</option>
-            <option value="up">up</option>
-            <option value="down">down</option>
-            <option value="left">left</option>
-            <option value="right">right</option>
+    <!-- Question 1 -->
+    <div class="popup" id="question1">
+        <p>1) Did you figure out the relationship between where you moved your hand and where the fly's shadow moved?</p>
+        <select id="q1-answer">
+            <option value="" disabled selected>Select your answer</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
         </select>
-        <button onclick="closePopup()">Submit</button>
+        <button onclick="submitQ1()">Submit</button>
+    </div>
+    
+    <!-- Question 1.2 (conditional) -->
+    <div class="popup hidden" id="question1-2">
+        <p>1.2) Please describe this relationship (At most 500 words)</p>
+        <textarea id="relationship-description" oninput="countWords(this)"></textarea>
+        <div class="word-counter" id="word-counter">0/500 words</div>
+        <button onclick="submitQ1_2()">Submit</button>
+    </div>
+    
+    <!-- Question 2 -->
+    <div class="popup hidden" id="question2">
+        <p>2) Which of these images best describes the relationship?</p>
+        <div class="image-grid">
+            <div class="image-option" onclick="selectImage(0)">
+                <p class="image-label">30 Degrees Clockwise</p>
+                <img src="Motions/30DegC.png" alt="30 Degrees Clockwise">
+            </div>
+            <div class="image-option" onclick="selectImage(1)">
+                <p class="image-label">30 Degrees Counterclockwise</p>
+                <img src="Motions/30DegCC.png" alt="30 Degrees Counterclockwise">
+            </div>
+            <div class="image-option" onclick="selectImage(2)">
+                <p class="image-label">90 Degrees Clockwise</p>
+                <img src="Motions/90DegC.png" alt="90 Degrees Clockwise">
+            </div>
+            <div class="image-option" onclick="selectImage(3)">
+                <p class="image-label">90 Degrees Counterclockwise</p>
+                <img src="Motions/90DegCC.png" alt="90 Degrees Counterclockwise">
+            </div>
+            <div class="image-option" onclick="selectImage(4)">
+                <p class="image-label">Reflection Across The Diagonal</p>
+                <img src="Motions/DiagRef.png" alt="Reflection Across The Diagonal">
+            </div>
+            <div class="image-option" onclick="selectImage(5)">
+                <p class="image-label">Reflection Across The Horizontal</p>
+                <img src="Motions/XRef.png" alt="Reflection Across The Horizontal">
+            </div>
+            <div class="image-option" onclick="selectImage(6)">
+                <p class="image-label">Reflection Across The Vertical</p>
+                <img src="Motions/YRef.png" alt="Reflection Across The Vertical">
+            </div>
+            <div class="image-option" onclick="selectImage(7)">
+                <p class="image-label">No Change</p>
+                <img src="Motions/NoChange.png" alt="No Change">
+            </div>
+        </div>
+        <button onclick="submitQ2()">Submit</button>
     </div>
     <script type="module">
         import { signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';; 
         import { initializeFirebase } from './firebaseConfig.js';
         
+        let do_upload = true;
         const { db, auth } = initializeFirebase();
         let prolificId = localStorage.getItem('prolificId')
         
 
         const dt = 50 //ms
 
-        window.onload = function() {
-            let qs_answered = 0;
-            let answers = ["", "", "", ""];
+        // Make functions globally accessible
+        window.selectedImageIndex = -1;
         
-            function closePopup() {
-                const select = document.getElementById("answer");
-                const questionText = document.querySelector("#popup p");
-        
-                if (select.value) {
-                    answers[qs_answered] = select.value;
-                    qs_answered++;
-        
-                    // Update question text based on progress
-                    if (qs_answered === 1) {
-                        questionText.textContent = "Q2) When your controls were changed, moving down would have moved your fly ___";
-                        select.value = ""; // Reset dropdown
-                    } else if (qs_answered === 2) {
-                        questionText.textContent = "Q3) When your controls were changed, moving right would have moved your fly ___";
-                        select.value = "";
-                    } else if (qs_answered === 3) {
-                        questionText.textContent = "Q4) When your controls were changed, moving left would have moved your fly ___";
-                        select.value = "";
-                    } else if (qs_answered === 4) {
-                        // Hide popup after the last question
-                        document.getElementById("popup").style.display = "none";
-                        document.getElementById("overlay").style.display = "none";
-                        
-                        const collectionPath = prolificId + "_" + auth.currentUser.uid
-                        const docRef = doc(db, collectionPath, "game_inputs");
-                        updateDoc(docRef, {
-                            finalAnswer: answers
-                        })
-                        .then(() => {
-                            console.log("Document successfully updated!");
-                        })
-                        .catch((error) => {
-                            console.error("Error updating document: ", error);
-                        });
-                    }
-                } else {
-                    alert("Please select an option before submitting.");
-                }
+        window.countWords = function(textarea) {
+            const text = textarea.value;
+            const wordCount = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+            const wordCounter = document.getElementById('word-counter');
+            
+            wordCounter.textContent = `${wordCount}/500 words`;
+            
+            if (wordCount > 500) {
+                wordCounter.classList.add('error');
+            } else {
+                wordCounter.classList.remove('error');
             }
+            
+            return wordCount;
+        };
         
-            window.closePopup = closePopup; // Ensure function is globally accessible
+        window.selectImage = function(index) {
+            // Remove 'selected' class from all images
+            document.querySelectorAll('.image-option').forEach(img => {
+                img.classList.remove('selected');
+            });
+            
+            // Add 'selected' class to clicked image
+            document.querySelectorAll('.image-option')[index].classList.add('selected');
+            window.selectedImageIndex = index;
+        };
+        
+        window.submitQ1 = function() {
+            const q1Answer = document.getElementById('q1-answer').value;
+            
+            if (!q1Answer) {
+                alert("Please select an answer before submitting.");
+                return;
+            }
+            
+            // Hide question 1
+            document.getElementById('question1').classList.add('hidden');
+            
+            // Store answer
+            window.surveyAnswers = {
+                q1: q1Answer,
+                q1_2: "",
+                q2: -1
+            };
+            
+            // If 'Yes', show question 1.2, else skip to question 2
+            if (q1Answer === "Yes") {
+                document.getElementById('question1-2').classList.remove('hidden');
+            } else {
+                document.getElementById('question2').classList.remove('hidden');
+            }
+        };
+        
+        window.submitQ1_2 = function() {
+            const descriptionText = document.getElementById('relationship-description').value.trim();
+            const wordCount = countWords(document.getElementById('relationship-description'));
+            
+            if (descriptionText === "") {
+                alert("Please enter a description before submitting.");
+                return;
+            }
+            
+            if (wordCount > 500) {
+                alert("Your description exceeds 500 words. Please reduce the length before submitting.");
+                return;
+            }
+            
+            // Store answer
+            window.surveyAnswers.q1_2 = descriptionText;
+            
+            // Hide question 1.2
+            document.getElementById('question1-2').classList.add('hidden');
+            
+            // Show question 2
+            document.getElementById('question2').classList.remove('hidden');
+        };
+        
+        window.submitQ2 = function() {
+            if (window.selectedImageIndex === -1) {
+                alert("Please select an image before submitting.");
+                return;
+            }
+            
+            // Store answer
+            window.surveyAnswers.q2 = window.selectedImageIndex;
+            
+            // Hide question 2 and overlay
+            document.getElementById('question2').classList.add('hidden');
+            document.getElementById('overlay').classList.add('hidden');
+            
+            // Upload answers if needed
+            if (do_upload && auth.currentUser) {
+                const docRef = doc(db, "Demo/Demo/" + auth.currentUser.uid, "game_inputs");
+                updateDoc(docRef, {
+                    surveyAnswers: window.surveyAnswers
+                })
+                .then(() => {
+                    console.log("Survey answers successfully uploaded!");
+                })
+                .catch((error) => {
+                    console.error("Error uploading survey answers: ", error);
+                });
+            }
+        };
+        
+        // Initialize on window load
+        window.onload = function() {
+            // Start with question 1 visible
+            document.getElementById('question1').classList.remove('hidden');
         };
         
 
         document.addEventListener('click', async (event) => {
-            const popup = document.getElementById("popup");
-            if (popup.contains(event.target)) {
+            if (event.target.tagName === 'BUTTON' || event.target.closest('button')) {
+                return; // Allow normal button click behavior without exit confirmation
+            }
+            
+            const currentPopup = document.querySelector('.popup:not(.hidden)');
+            if (!currentPopup || currentPopup.contains(event.target)) {
                 return; // Ignore clicks inside the popup
             }
-
+            
             event.preventDefault();
             const userConfirmed = confirm("Are you sure you want to exit?");
             if (userConfirmed) {
-                await signOut(auth);
-                window.location.href = 'index.html';
+                try {
+                    // Use the existing auth from the module if available
+                    if (typeof auth !== 'undefined' && auth) {
+                        await signOut(auth);
+                    }
+                    window.location.href = 'index.html';
+                } catch (error) {
+                    console.error("Error signing out:", error);
+                    // Still redirect even if sign out fails
+                    window.location.href = 'index.html';
+                }
             }
         });
 
