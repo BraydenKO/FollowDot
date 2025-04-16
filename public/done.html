@@ -237,7 +237,7 @@
         let do_upload = true;
         const { db, auth } = initializeFirebase();
         let prolificId = localStorage.getItem('prolificId')
-        
+        console.log(prolificId);
 
         const dt = 50 //ms
 
@@ -336,7 +336,8 @@
             
             // Upload answers if needed
             if (do_upload && auth.currentUser) {
-                const docRef = doc(db, "Demo/Demo/" + auth.currentUser.uid, "game_inputs");
+                const collectionPath = prolificId + "_" + auth.currentUser.uid
+                const docRef = doc(db, collectionPath, "game_inputs");
                 updateDoc(docRef, {
                     surveyAnswers: window.surveyAnswers
                 })
