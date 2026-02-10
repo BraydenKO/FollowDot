@@ -164,25 +164,26 @@
             // TRIAL COUNTS - How many trials of each type
             // ----------------------------------------------------------
             trials: {
-                control: 2,      // Must be even (for upload splitting)
-                perturb: 4,      // Must be multiple of 4 (for upload splitting)
-                post: 1          // Post-perturbation trials
+                baseline: 16,        // Feedback baseline (no rotation)
+                rampUp: 30,          // Gradual rotation increase (1 deg per trial)
+                hold: 6,             // Hold at max rotation
+                aftereffect: 4       // Post trials (no rotation)
             },
             
             // ----------------------------------------------------------
             // TRIAL DURATIONS (in milliseconds)
             // ----------------------------------------------------------
             durations: {
-                normal: 1000,    // Duration of normal mode trials
-                rotate: 1000     // Duration of rotate mode trials
+                trialLength: 30000   // 30 seconds per trial
             },
             
             // ----------------------------------------------------------
             // PERTURBATION SETTINGS
             // ----------------------------------------------------------
             perturbation: {
-                style: "rotate",           // Options: "rotate", "reverse"
-                rotationAngle: Math.PI / 2 // Radians (90 degrees)
+                // Rotation ramp: starts at 0, increases by 1 degree per ramp trial
+                degreesPerTrial: 1,      // Degrees added per ramp trial
+                maxDegrees: 30,          // Maximum rotation (held during hold phase)
             },
             
             // ----------------------------------------------------------
@@ -221,9 +222,10 @@
             messages: {
                 welcome: "Welcome! Get ready to follow the fly. You will have a countdown above before the game begins on each trial. Press OK to begin and go fullscreen",
                 trialComplete: "Good job! Click OK to continue the game.",
-                controlToPerturb: "Great Job! Now, your controls will be switched! Try to adapt quickly. Click OK to continue.",
-                perturbToPost: "Great Job! Now, your controls will switched back to normal! Click OK to continue.",
-                uploading: "Please wait for data to be processed and uploaded (It's a lot of data)."
+                baselineToRamp: "Great job! The controls may start to feel different. Try to adapt as you go. Click OK to continue.",
+                rampToHold: "Great job! Keep going! Click OK to continue.",
+                holdToAftereffect: "Great job! Now your controls are back to normal. Click OK to continue.",
+                uploading: "Please wait for data to be processed and uploaded..."
             },
             
             // ----------------------------------------------------------
@@ -245,12 +247,19 @@
                 // Subcollection name for trial data
                 trialsSubcollection: "trials",
                 
-                // Document names for each phase
-                documentNames: {
-                    control: ["control1", "control2"],
-                    perturb: ["perturb1", "perturb2", "perturb3", "perturb4"],
-                    post: ["post"]
-                }
+                // Document names for each phase (will be auto-generated based on trial counts)
+                // baseline: baseline_1, baseline_2, ... baseline_16
+                // rampUp: ramp_1, ramp_2, ... ramp_30
+                // hold: hold_1, hold_2, ... hold_6
+                // aftereffect: aftereffect_1, aftereffect_2, ... aftereffect_4
+                documentPrefixes: {
+                    baseline: "baseline",
+                    rampUp: "ramp",
+                    hold: "hold",
+                    aftereffect: "aftereffect"
+                },
+                // How many trials to batch per upload (to stay under Firestore limits)
+                trialsPerUpload: 4
             }
         };
 
@@ -292,10 +301,11 @@
             fly: { x: 0, y: 0 },
             
             // Game progress
-            currentMode: "normal",
+            currentPhase: "baseline",  // baseline, rampUp, hold, aftereffect, done
+            currentRotationDegrees: 0, // Current rotation in degrees
             trialIndex: 0,
             trialsRemaining: 0,
-            postPhaseIndex: -1,  // -1 means not in post phase
+            phaseTrialIndex: 0,        // Trial index within current phase
             
             // Timing
             trialStartTime: 0,
@@ -305,7 +315,8 @@
             currentTrialData: {
                 userPositions: [],
                 flyPositions: [],
-                distances: []
+                distances: [],
+                rotationDegrees: 0     // Track rotation for this trial
             },
             allDistances: [],
             phis: [],  // Phase offsets for fly movement
@@ -420,6 +431,10 @@
         // ============================================================
         // MOUSE MOVEMENT HANDLERS
         // ============================================================
+        function degreesToRadians(degrees) {
+            return degrees * (Math.PI / 180);
+        }
+        
         const mouseHandlers = {
             normal(e) {
                 const { width, height } = state.screen;
@@ -428,16 +443,9 @@
                 updateUserDotPosition();
             },
             
-            reverse(e) {
-                const { width, height } = state.screen;
-                state.user.x = Math.max(0, Math.min(width, state.user.x - e.movementX));
-                state.user.y = Math.max(0, Math.min(height - 50, state.user.y - e.movementY));
-                updateUserDotPosition();
-            },
-            
             rotate(e) {
                 const { width, height } = state.screen;
-                const radians = CONFIG.perturbation.rotationAngle;
+                const radians = degreesToRadians(state.currentRotationDegrees);
                 
                 const rotatedDeltaX = e.movementX * Math.cos(radians) - e.movementY * Math.sin(radians);
                 const rotatedDeltaY = e.movementX * Math.sin(radians) + e.movementY * Math.cos(radians);
@@ -453,12 +461,12 @@
             elements.userDot.style.top = `${state.user.y}px`;
         }
 
-        function setMouseHandler(mode) {
+        function setMouseHandler(useRotation) {
             if (state.currentMouseHandler) {
                 document.removeEventListener('mousemove', state.currentMouseHandler);
             }
             
-            state.currentMouseHandler = mouseHandlers[mode] || mouseHandlers.normal;
+            state.currentMouseHandler = useRotation ? mouseHandlers.rotate : mouseHandlers.normal;
             document.addEventListener('mousemove', state.currentMouseHandler);
         }
 
@@ -466,11 +474,6 @@
         // FLY MOVEMENT
         // ============================================================
         function generatePhi() {
-            // If in post phase, reuse saved phis
-            if (state.postPhaseIndex > -1) {
-                return state.phis[state.postPhaseIndex++];
-            }
-            
             const phi = [];
             for (let i = 0; i < 7; i++) {
                 phi.push(Math.random() * 2 * Math.PI - Math.PI);
@@ -611,14 +614,15 @@
                 state.currentTrialData.userPositions.push({
                     x: state.user.x,
                     y: state.user.y,
-                    game_mode: state.currentMode,
+                    phase: state.currentPhase,
+                    rotationDegrees: state.currentRotationDegrees,
                     timestamp: time
                 });
                 
                 state.currentTrialData.flyPositions.push({
                     x: state.fly.x,
                     y: state.fly.y,
-                    game_mode: state.currentMode,
+                    phase: state.currentPhase,
                     timestamp: time
                 });
                 
@@ -637,7 +641,10 @@
             state.trials[state.trialIndex] = {
                 userPositions: state.currentTrialData.userPositions,
                 flyPositions: state.currentTrialData.flyPositions,
-                phis: state.phis[state.phis.length - 1]
+                phis: state.phis[state.phis.length - 1],
+                phase: state.currentPhase,
+                rotationDegrees: state.currentRotationDegrees,
+                phaseTrialIndex: state.phaseTrialIndex
             };
             
             state.allDistances.push(state.currentTrialData.distances);
@@ -646,10 +653,12 @@
             state.currentTrialData = {
                 userPositions: [],
                 flyPositions: [],
-                distances: []
+                distances: [],
+                rotationDegrees: 0
             };
             
             state.trialIndex++;
+            state.phaseTrialIndex++;
         }
 
         // ============================================================
@@ -688,8 +697,10 @@
                 prolificId: prolificId,
                 createdAt: Timestamp.fromDate(new Date()),
                 screenWidth: state.screen.width,
-                screenHeight: state.screen.height
-            }, { merge: true });  // merge to avoid overwriting on subsequent uploads
+                screenHeight: state.screen.height,
+                trialConfig: CONFIG.trials,
+                perturbationConfig: CONFIG.perturbation
+            }, { merge: true });
             
             // Then, add trial data to the trials subcollection
             const trialsCollectionRef = collection(db, experimentCollection, oderId, trialsSubcollection);
@@ -702,32 +713,26 @@
             });
         }
 
-        async function uploadPhaseData(phase) {
+        async function uploadPhaseData(phase, startTrialIndex, endTrialIndex) {
             if (!CONFIG.upload.enabled) return;
             
             showUploadStatus(true);
             
             try {
-                const { trials } = CONFIG;
-                const docNames = CONFIG.firebase.documentNames;
+                const { documentPrefixes, trialsPerUpload } = CONFIG.firebase;
+                const prefix = documentPrefixes[phase];
+                const totalTrials = endTrialIndex - startTrialIndex;
                 
-                if (phase === "normal") {
-                    const half = Math.floor(trials.control / 2);
-                    await uploadTrialData(0, half, docNames.control[0]);
-                    await uploadTrialData(half, trials.control, docNames.control[1]);
-                } else if (phase === CONFIG.perturbation.style) {
-                    const quarter = Math.floor(trials.perturb / 4);
-                    const base = trials.control;
-                    await uploadTrialData(base, base + quarter, docNames.perturb[0]);
-                    await uploadTrialData(base + quarter, base + 2 * quarter, docNames.perturb[1]);
-                    await uploadTrialData(base + 2 * quarter, base + 3 * quarter, docNames.perturb[2]);
-                    await uploadTrialData(base + 3 * quarter, base + trials.perturb, docNames.perturb[3]);
-                } else if (phase === "post") {
-                    const base = trials.control + trials.perturb;
-                    await uploadTrialData(base, base + trials.post, docNames.post[0]);
+                // Upload in batches
+                let batchNum = 1;
+                for (let i = startTrialIndex; i < endTrialIndex; i += trialsPerUpload) {
+                    const batchEnd = Math.min(i + trialsPerUpload, endTrialIndex);
+                    const docName = `${prefix}_batch${batchNum}`;
+                    await uploadTrialData(i, batchEnd, docName);
+                    batchNum++;
                 }
                 
-                console.log(`${phase} phase data uploaded successfully`);
+                console.log(`${phase} phase data uploaded successfully (${totalTrials} trials)`);
             } catch (error) {
                 console.error("Upload error:", error);
                 state.canNavigate = false;
@@ -740,7 +745,7 @@
         // GAME LOOP
         // ============================================================
         function gameLoop(phi) {
-            if (state.currentMode === "done") {
+            if (state.currentPhase === "done") {
                 finishGame();
                 return;
             }
@@ -769,8 +774,8 @@
         }
 
         function resumeGame(generateNewPhi = true) {
-            setMouseHandler(state.currentMode === CONFIG.perturbation.style ? 
-                           CONFIG.perturbation.style : 'normal');
+            // Use rotation handler if we have any rotation, otherwise normal
+            setMouseHandler(state.currentRotationDegrees > 0);
             
             elements.userDot.style.visibility = 'visible';
             
@@ -784,72 +789,136 @@
         }
 
         // ============================================================
+        // ROTATION MANAGEMENT
+        // ============================================================
+        function updateRotationForPhase(phase, trialIndexInPhase) {
+            const { degreesPerTrial, maxDegrees } = CONFIG.perturbation;
+            
+            switch (phase) {
+                case "baseline":
+                    state.currentRotationDegrees = 0;
+                    break;
+                case "rampUp":
+                    // Increase by 1 degree per trial (trial 0 = 1 deg, trial 29 = 30 deg)
+                    state.currentRotationDegrees = (trialIndexInPhase + 1) * degreesPerTrial;
+                    break;
+                case "hold":
+                    state.currentRotationDegrees = maxDegrees;
+                    break;
+                case "aftereffect":
+                    state.currentRotationDegrees = 0;
+                    break;
+                default:
+                    state.currentRotationDegrees = 0;
+            }
+            
+            console.log(`Phase: ${phase}, Trial: ${trialIndexInPhase + 1}, Rotation: ${state.currentRotationDegrees}°`);
+        }
+
+        // ============================================================
         // TRIAL MANAGEMENT
         // ============================================================
-        async function runTrials(mode, count, isFinalPhase) {
-            const duration = CONFIG.durations[mode] || CONFIG.durations.normal;
+        async function runSingleTrial() {
+            const duration = CONFIG.durations.trialLength;
             
-            startRecording();
+            elements.trialCounter.textContent = state.trialsRemaining;
+            state.trialStartTime = Date.now();
             
-            for (let i = 0; i < count; i++) {
-                const isLastTrial = i === count - 1;
+            // Wait for trial duration
+            await new Promise(resolve => setTimeout(resolve, duration));
+            
+            pauseGame();
+            stopRecording();
+            saveTrialData();
+            state.trialsRemaining--;
+        }
+
+        async function runPhase(phase, trialCount, nextPhase, transitionMessage) {
+            state.currentPhase = phase;
+            state.phaseTrialIndex = 0;
+            
+            const phaseStartIndex = state.trialIndex;
+            
+            for (let i = 0; i < trialCount; i++) {
+                // Update rotation for this specific trial
+                updateRotationForPhase(phase, i);
                 
-                elements.trialCounter.textContent = state.trialsRemaining;
-                state.trialsRemaining--;
-                state.trialStartTime = Date.now();
+                // Set mouse handler based on rotation
+                setMouseHandler(state.currentRotationDegrees > 0);
                 
-                // Wait for trial duration
-                await new Promise(resolve => setTimeout(resolve, duration));
+                // Generate phi and place fly
+                const phi = generatePhi();
+                state.phis.push(phi);
+                placeFlyAtStart();
                 
-                pauseGame();
-                stopRecording();
-                saveTrialData();
+                // Countdown before trial
+                await showCountdown(CONFIG.countdown.duration);
                 
-                if (isFinalPhase && isLastTrial) {
-                    // Final trial of the entire game
-                    state.currentMode = "done";
-                } else if (isLastTrial) {
-                    // Last trial of this phase - show phase transition message
-                    const message = mode === CONFIG.perturbation.style ? 
-                                   CONFIG.messages.perturbToPost : 
-                                   CONFIG.messages.controlToPerturb;
+                // Start recording and run trial
+                startRecording();
+                resumeGame(false); // Don't generate new phi, we already did
+                await runSingleTrial();
+                
+                const isLastTrialOfPhase = i === trialCount - 1;
+                
+                if (isLastTrialOfPhase) {
+                    // Upload this phase's data
+                    await uploadPhaseData(phase, phaseStartIndex, state.trialIndex);
                     
-                    await uploadPhaseData(state.currentMode);
-                    await showModal(message);
+                    // Show transition message if there's a next phase
+                    if (nextPhase !== "done") {
+                        await showModal(transitionMessage);
+                    }
                 } else {
                     // Regular trial completion
                     await showModal(CONFIG.messages.trialComplete);
-                    placeFlyAtStart();
-                    await showCountdown(CONFIG.countdown.duration);
-                    startRecording();
                 }
             }
+            
+            return nextPhase;
         }
 
         async function runGame() {
             const { trials } = CONFIG;
-            state.trialsRemaining = trials.control + trials.perturb + trials.post;
+            const { messages } = CONFIG;
             
-            // Phase 1: Control trials
-            state.currentMode = "normal";
-            setMouseHandler('normal');
-            placeFlyAtStart();
-            await showCountdown(CONFIG.countdown.duration);
-            await runTrials("normal", trials.control, false);
+            state.trialsRemaining = trials.baseline + trials.rampUp + trials.hold + trials.aftereffect;
             
-            // Phase 2: Perturbation trials
-            state.currentMode = CONFIG.perturbation.style;
-            setMouseHandler(CONFIG.perturbation.style);
-            placeFlyAtStart();
-            await showCountdown(CONFIG.countdown.duration);
-            await runTrials(CONFIG.perturbation.style, trials.perturb, false);
+            // Phase 1: Baseline (no rotation)
+            await runPhase(
+                "baseline", 
+                trials.baseline, 
+                "rampUp", 
+                messages.baselineToRamp
+            );
             
-            // Phase 3: Post trials (reusing control phis)
-            state.currentMode = "normal";
-            state.postPhaseIndex = 0;
-            setMouseHandler('normal');
-            await showCountdown(CONFIG.countdown.duration);
-            await runTrials("normal", trials.post, true);
+            // Phase 2: Ramp Up (1 degree per trial, 1-30 degrees)
+            await runPhase(
+                "rampUp", 
+                trials.rampUp, 
+                "hold", 
+                messages.rampToHold
+            );
+            
+            // Phase 3: Hold (stay at 30 degrees)
+            await runPhase(
+                "hold", 
+                trials.hold, 
+                "aftereffect", 
+                messages.holdToAftereffect
+            );
+            
+            // Phase 4: Aftereffect (no rotation)
+            await runPhase(
+                "aftereffect", 
+                trials.aftereffect, 
+                "done", 
+                ""
+            );
+            
+            // Game complete
+            state.currentPhase = "done";
+            finishGame();
         }
 
         // ============================================================
@@ -864,10 +933,12 @@
                 return acc;
             }, []);
             
+            // Highlights at end of each phase
             const highlights = [
-                cumulativeLengths[trials.control - 1],
-                cumulativeLengths[trials.control + trials.perturb - 1],
-                cumulativeLengths[trials.control + trials.perturb + trials.post - 1]
+                cumulativeLengths[trials.baseline - 1],                                          // End of baseline
+                cumulativeLengths[trials.baseline + trials.rampUp - 1],                          // End of ramp
+                cumulativeLengths[trials.baseline + trials.rampUp + trials.hold - 1],            // End of hold
+                cumulativeLengths[trials.baseline + trials.rampUp + trials.hold + trials.aftereffect - 1]  // End of aftereffect
             ];
             
             return { flatDistances, highlights };
@@ -883,10 +954,12 @@
             localStorage.setItem('sectionSizes', JSON.stringify(Object.values(sectionSizes)));
             localStorage.setItem('percentages', JSON.stringify(percentages));
             localStorage.setItem('distances', JSON.stringify(flatDistances));
-            localStorage.setItem('game_timelegths', JSON.stringify(CONFIG.durations));
+            localStorage.setItem('game_config', JSON.stringify({
+                trials: CONFIG.trials,
+                durations: CONFIG.durations,
+                perturbation: CONFIG.perturbation
+            }));
             localStorage.setItem('highlights', JSON.stringify(highlights));
-            
-            await uploadPhaseData("post");
             
             if (state.canNavigate) {
                 window.location.href = CONFIG.navigation.completionPage;
@@ -917,15 +990,7 @@
                 
                 await showStartModal(CONFIG.messages.welcome);
                 
-                // Generate initial phi and start game
-                setMouseHandler('normal');
-                const phi = generatePhi();
-                state.phis.push(phi);
-                placeFlyAtStart();
-                
-                state.trialStartTime = Date.now();
-                gameLoop(phi);
-                
+                // Start the game
                 await runGame();
             } catch (error) {
                 console.error("Initialization error:", error);
