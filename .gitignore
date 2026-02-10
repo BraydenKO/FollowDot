@@ -71,3 +71,4 @@ node_modules/
 firebase-tools-instant-win.exe*
 .env.local
 admin/
+.venv
