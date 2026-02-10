@@ -851,6 +851,9 @@
                 state.phis.push(phi);
                 placeFlyAtStart();
                 
+                // Show user dot so they can position themselves during countdown
+                elements.userDot.style.visibility = 'visible';
+                
                 // Countdown before trial
                 await showCountdown(CONFIG.countdown.duration);
                 

@@ -475,7 +475,39 @@
     </div>
 
     <!-- ============================================================
-         REJECTION SCREEN
+         REJECTION SCREEN (Wrong Device)
+         ============================================================ -->
+    <div class="container hidden" id="step-rejected-device">
+        <div class="rejection-container">
+            <div class="rejection-icon">🖱️</div>
+            <h1>Mouse Required</h1>
+            
+            <p class="rejection-message">
+                Thank you for your interest in our study!
+            </p>
+            
+            <p class="rejection-message">
+                Unfortunately, this experiment requires the use of a <strong>computer mouse</strong> 
+                to ensure accurate tracking of hand movements. Trackpads and other input devices 
+                can affect the precision of our measurements.
+            </p>
+            
+            <p class="rejection-message">
+                If you have access to a mouse, you're welcome to return and participate using that device.
+            </p>
+            
+            <div class="rejection-note">
+                <strong>Note:</strong> Your response has been recorded for our records.
+            </div>
+            
+            <p class="rejection-message">
+                You may now close this window. Thank you for your understanding!
+            </p>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         REJECTION SCREEN (Handedness)
          ============================================================ -->
     <div class="container hidden" id="step-rejected">
         <div class="rejection-container">
@@ -516,6 +548,14 @@
         // CONFIGURATION - Easy to modify study parameters
         // ============================================================
         const CONFIG = {
+            // ----------------------------------------------------------
+            // INPUT DEVICE FILTERING
+            // ----------------------------------------------------------
+            inputDevice: {
+                // Only allow these devices (others will be rejected)
+                allowedDevices: ['mouse']
+            },
+            
             // ----------------------------------------------------------
             // HANDEDNESS FILTERING
             // ----------------------------------------------------------
@@ -615,6 +655,7 @@
             stepConsent: document.getElementById('step-consent'),
             stepInstructions: document.getElementById('step-instructions'),
             stepRejected: document.getElementById('step-rejected'),
+            stepRejectedDevice: document.getElementById('step-rejected-device'),
             
             // Buttons
             btnToHandedness: document.getElementById('btn-to-handedness'),
@@ -682,6 +723,21 @@
             // Store values
             state.demographics = { prolificId, inputDevice, playedBefore, age: parseInt(age), gender };
             hideError(elements.demographicsError);
+            return true;
+        }
+        
+        function checkDeviceEligibility() {
+            const { allowedDevices } = CONFIG.inputDevice;
+            const device = state.demographics.inputDevice;
+            
+            if (!allowedDevices.includes(device)) {
+                state.eligibility = {
+                    isEligible: false,
+                    dominantHand: null,
+                    reason: `This study requires a mouse. You selected: ${device}`
+                };
+                return false;
+            }
             return true;
         }
 
@@ -798,11 +854,18 @@
         // EVENT HANDLERS
         // ============================================================
         function setupEventListeners() {
-            // Demographics -> Handedness
-            elements.btnToHandedness.addEventListener('click', () => {
-                if (validateDemographics()) {
-                    showStep(elements.stepHandedness);
+            // Demographics -> Handedness (or rejection if wrong device)
+            elements.btnToHandedness.addEventListener('click', async () => {
+                if (!validateDemographics()) return;
+                
+                // Check device eligibility first
+                if (!checkDeviceEligibility()) {
+                    await recordStatistics();
+                    showStep(elements.stepRejectedDevice);
+                    return;
                 }
+                
+                showStep(elements.stepHandedness);
             });
             
             // Handedness -> Consent (or Rejection)
