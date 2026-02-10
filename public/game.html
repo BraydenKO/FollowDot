@@ -5,44 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mouse Follower Dot</title>
     <style>
-        body { margin: 0; overflow: hidden; height: 100vh; cursor: none; }
-        .user-dot, .random-dot {
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            overflow: hidden;
+            height: 100vh;
+            cursor: none;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        
+        .dot {
             position: absolute;
             pointer-events: none;
             transform: translate(-50%, -50%);
-            /*border: 2px solid black; Deprecated*/
-            
+            background-color: transparent;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            border: none;
         }
         
         .user-dot {
-            background-color: transparent; /* Ensure no background */
             background-image: url('shadow.png');
-            background-size: contain;
-            background-position: center;
-            background-repeat: no-repeat;
             width: 50px;
             height: 50px;
-            border: none; /* Only applies to user-dot */
         }
         
-        .random-dot {
-            background-color: transparent; /* Ensure no background */
+        .user-dot.close {
+            background-image: url('shadow_green.png');
+            width: 60px;
+            height: 60px;
+        }
+        
+        .fly-dot {
             background-image: url('fly.png');
-            background-size: contain;
-            background-position: center;
-            background-repeat: no-repeat;
             width: 50px;
             height: 50px;
-            border: none; /* Remove border to avoid unwanted cropping */
         }
         
-        
+        /* Modal Styles */
         .modal-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0;
             background: rgba(0, 0, 0, 0.5);
             display: flex;
             align-items: center;
@@ -51,756 +58,882 @@
             cursor: auto;
         }
         
+        .modal-overlay.hidden {
+            display: none;
+        }
+        
         .modal {
             background: white;
-            padding: 20px;
-            border-radius: 10px;
+            padding: 30px 25px 70px;
+            border-radius: 12px;
             text-align: center;
-            width: 300px;
+            width: 340px;
+            max-width: 90vw;
             position: relative;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
         }
         
         .modal p {
-            margin-bottom: 50px; /* Add margin to create space between the text and button */
+            margin: 0 0 20px;
+            font-size: 16px;
+            line-height: 1.5;
+            color: #333;
         }
         
-        .ok-button {
-            padding: 10px 20px;
-            background: blue;
+        .modal-button {
+            padding: 12px 28px;
+            background: #2563eb;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
             position: absolute;
-            bottom: 20px; /* Shift the button up slightly */
+            bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
+            transition: background 0.2s;
         }
-        .corner-number {
+        
+        .modal-button:hover {
+            background: #1d4ed8;
+        }
+        
+        /* HUD Elements */
+        .trial-counter {
             position: fixed;
             top: 10px;
             right: 10px;
             color: black;
             padding: 10px;
-            border-radius: 50%;
             font-size: 80px;
             font-weight: bold;
+            z-index: 100;
         }
         
+        .trial-counter.uploading {
+            top: 10px;
+            left: 50%;
+            right: auto;
+            transform: translateX(-50%);
+            font-size: 20px;
+            text-align: center;
+            max-width: 80%;
+        }
         
+        .countdown-timer {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            background: black;
+            padding: 8px 16px;
+            border-radius: 6px;
+            z-index: 100;
+        }
         
+        .countdown-timer.hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <div class="user-dot"></div>
-    <div class="random-dot"></div>
-    <div class="modal-overlay" id="customAlert">
+    <div class="dot user-dot" id="userDot"></div>
+    <div class="dot fly-dot" id="flyDot"></div>
+    
+    <div class="modal-overlay" id="modal">
         <div class="modal">
-            <p></p>
-            <button class="ok-button" id="okButton">OK</button>
+            <p id="modalMessage"></p>
+            <button class="modal-button" id="modalButton">OK</button>
         </div>
     </div>
-    <div id="timerDisplay" style="
-        position: absolute;
-        top: 10px;
-        left: 50%;
-        transform: translateX(-50%);
-        font-size: 24px;
-        font-weight: bold;
-        color: white;
-        background: black;
-        padding: 5px 10px;
-        border-radius: 5px;
-        display: none;
-    "></div>
-    <div class="corner-number" id="number">0</div>
+    
+    <div class="countdown-timer hidden" id="countdownTimer"></div>
+    <div class="trial-counter" id="trialCounter">0</div>
 
     <script type="module">
-        //document.getElementById('customAlert').style.display = 'none';
-        //TODO Add COMMENTS!!!
-        let do_upload = true;
-        
-
-        // Make sure user can only come to this page after filling in their details
-        // And signing the consent form.
-        if (sessionStorage.getItem('gameStarted') !== 'true') {
-            window.location.href = 'index.html';
-        } else {
-            // Clear the flag to prevent re-entry
-            sessionStorage.removeItem('gameStarted');
-        }
-
-
-        // Import the necessary Firebase modules and initialize global variables
-        import { initializeFirebase } from './firebaseConfig.js';
-        import { doc, setDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        import { signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-
-        const { db, auth } = initializeFirebase();
-        
-        let prolificId = localStorage.getItem('prolificId') || "anonymous"; // Fallback to avoid 'null' string
-        let collectionPath;
-
-
-        // CHANGE these to change the game mode lengths and how many trials are run.
-        const game_type_lengths = {
-            "normal": 1_000, // ms
-            "rotate": 1_000,
-        }
-
-        // Task Trial Parameters
-        const n_controls = 2; // Must be even
-        const n_perturbs = 4; // Must be a multiple of 4
-        const n_posts = 1;
-        const perturb_style= "rotate";
-           
-        // This just says the first game is normal mode.
-        let game_type = "normal";
-
-        // Get the dots/fly and the window size
-        const userDot = document.querySelector('.user-dot');
-        const randomDot = document.querySelector('.random-dot');
-        const trial_num = document.getElementById("number");
-        const width = window.screen.width;
-        const height = window.screen.height;
-
-        // initialize fly to be in the center of the screen
-        let x = width / 2;
-        let y = height / 2;
-
-
-        // From paper and normalized to screen size
-        // Amplitude is deviation from middle of screen
-
-        // Assume 1440x900
-        // Sum is 11.05 (useful for scaling)
-        let a_y = [2.31,2.31,2.31,1.58,1.03,0.81,0.70].map(n => 40*n); // 895px max height
-        // Max height is the sum of these amplitudes * 2 (the sum tells you how high above
-        // the center the fly will go)
-
-
-        if(height < 900){
-            a_y = [0.2*height/2,0.2*height/2,0.2*height/2,0.15*height/2,0.11*height/2,0.08*height/2,0.06*height/2];
-        }
-        const freq_y = [0.1,0.25,0.55,0.85,1.15,1.55,2.05]; // Note that because dt=2000, the real frequencies are halved and this 
-                                                            // helps the fly move in a smoother nicer way. 
-        
-        // sum is 11.69 (useful for scaling values)
-        let a_x = [2.31,2.31,2.31,1.76,1.30,0.97,0.73].map(n => 61*n) // 1426px max width
-        if(width < 1440){ // If screen to small, just scale
-            a_x = [0.21*width/2,0.21*width/2,0.21*width/2,0.14*width/2,0.09*width/2,0.07*width/2,0.06*width/2];
-        }
-        const freq_x = [0.15,0.35,0.65,0.95,1.45,1.85,2.15] // See comment for freq_y
-
-
-        // Initialize global variables used throughout the game
-        let currentMousemoveHandler;
-
-        let prevMouseX = null;
-        let prevMouseY = null;
-        let userDotX = width/2;
-        let userDotY = height/2;
-        let dist;
-
-        let trials = {};
-        let trial = 0;
-
-        let userPositions = [];
-        let followPositions = [];
-
-        let distances = [];
-        let allDistances = [];
-        let highlights = [];
-        let phis = [];
-        let animframe;
-        let intervalId;
-        let close_count = 0; // Number of times the user was close to the fly
-        let total_counts = 0; // Total number of times the game checked if the user was close to the fly.
-
-        let sampling_rate = 20 //Hz ABSOLUTE MAX is 250Hz but practically much lower than that
-        let samp_delay = 1000/sampling_rate
-        let dt = 2000; // milliseconds per t. 
-        let start;
-        let post = -1; // -1 to signal it's not in post mode
-        let change_window = true;
-        let trials_left = n_controls + n_perturbs + n_posts;
-
-        function goFullscreen() {
-
-            if (document.documentElement.requestFullscreen) {
-                document.documentElement.requestFullscreen();
-            } else if (document.documentElement.mozRequestFullScreen) { // Firefox
-                document.documentElement.mozRequestFullScreen();
-            } else if (document.documentElement.webkitRequestFullscreen) { // Chrome, Safari, Opera
-                document.documentElement.webkitRequestFullscreen();
-            } else if (document.documentElement.msRequestFullscreen) { // IE/Edge
-                document.documentElement.msRequestFullscreen();
+        // ============================================================
+        // CONFIGURATION - Easy to modify game parameters
+        // ============================================================
+        const CONFIG = {
+            // ----------------------------------------------------------
+            // TRIAL COUNTS - How many trials of each type
+            // ----------------------------------------------------------
+            trials: {
+                control: 2,      // Must be even (for upload splitting)
+                perturb: 4,      // Must be multiple of 4 (for upload splitting)
+                post: 1          // Post-perturbation trials
+            },
+            
+            // ----------------------------------------------------------
+            // TRIAL DURATIONS (in milliseconds)
+            // ----------------------------------------------------------
+            durations: {
+                normal: 1000,    // Duration of normal mode trials
+                rotate: 1000     // Duration of rotate mode trials
+            },
+            
+            // ----------------------------------------------------------
+            // PERTURBATION SETTINGS
+            // ----------------------------------------------------------
+            perturbation: {
+                style: "rotate",           // Options: "rotate", "reverse"
+                rotationAngle: Math.PI / 2 // Radians (90 degrees)
+            },
+            
+            // ----------------------------------------------------------
+            // SAMPLING & TIMING
+            // ----------------------------------------------------------
+            sampling: {
+                rate: 20,        // Hz (samples per second)
+                dt: 2000         // Milliseconds per time unit for fly movement
+            },
+            
+            // ----------------------------------------------------------
+            // PROXIMITY THRESHOLD
+            // ----------------------------------------------------------
+            proximity: {
+                closeDistance: 100  // Pixels - distance to be "close" to fly
+            },
+            
+            // ----------------------------------------------------------
+            // COUNTDOWN SETTINGS
+            // ----------------------------------------------------------
+            countdown: {
+                duration: 0.5    // Seconds before each trial starts
+            },
+            
+            // ----------------------------------------------------------
+            // DATA UPLOAD
+            // ----------------------------------------------------------
+            upload: {
+                enabled: true,   // Set to false to disable Firebase uploads
+                showUploadStatus: true
+            },
+            
+            // ----------------------------------------------------------
+            // MESSAGES - Easy to customize all game messages
+            // ----------------------------------------------------------
+            messages: {
+                welcome: "Welcome! Get ready to follow the fly. You will have a countdown above before the game begins on each trial. Press OK to begin and go fullscreen",
+                trialComplete: "Good job! Click OK to continue the game.",
+                controlToPerturb: "Great Job! Now, your controls will be switched! Try to adapt quickly. Click OK to continue.",
+                perturbToPost: "Great Job! Now, your controls will switched back to normal! Click OK to continue.",
+                uploading: "Please wait for data to be processed and uploaded (It's a lot of data)."
+            },
+            
+            // ----------------------------------------------------------
+            // NAVIGATION
+            // ----------------------------------------------------------
+            navigation: {
+                requireConsent: true,      // Redirect if consent not given
+                consentPage: "index.html",
+                completionPage: "done.html"
+            },
+            
+            // ----------------------------------------------------------
+            // FIREBASE STRUCTURE
+            // ----------------------------------------------------------
+            firebase: {
+                // Root collection for this experiment
+                experimentCollection: "experiments_v2",
+                
+                // Subcollection name for trial data
+                trialsSubcollection: "trials",
+                
+                // Document names for each phase
+                documentNames: {
+                    control: ["control1", "control2"],
+                    perturb: ["perturb1", "perturb2", "perturb3", "perturb4"],
+                    post: ["post"]
+                }
             }
-            document.body.style.cursor = 'none';  // Hides the cursor
-        }
+        };
 
-        
+        // ============================================================
+        // FLY MOVEMENT PARAMETERS (from original paper)
+        // ============================================================
+        const FLY_PARAMS = {
+            // Y-axis amplitudes (scaled based on screen size)
+            amplitudes: {
+                y: [2.31, 2.31, 2.31, 1.58, 1.03, 0.81, 0.70],
+                x: [2.31, 2.31, 2.31, 1.76, 1.30, 0.97, 0.73]
+            },
+            // Frequencies for oscillation
+            frequencies: {
+                y: [0.1, 0.25, 0.55, 0.85, 1.15, 1.55, 2.05],
+                x: [0.15, 0.35, 0.65, 0.95, 1.45, 1.85, 2.15]
+            },
+            // Scale factors for different screen sizes
+            scaleFactors: {
+                y: { base: 40, smallScreenRatios: [0.2, 0.2, 0.2, 0.15, 0.11, 0.08, 0.06] },
+                x: { base: 61, smallScreenRatios: [0.21, 0.21, 0.21, 0.14, 0.09, 0.07, 0.06] }
+            },
+            // Minimum screen dimensions before scaling kicks in
+            minDimensions: { width: 1440, height: 900 }
+        };
 
-        function moveUser(e) {
-            userDotX = Math.max(0, Math.min(width,e.clientX));
-            userDotY = Math.max(0, Math.min(height,e.clientY));
+        // ============================================================
+        // GAME STATE - All mutable state in one place
+        // ============================================================
+        const state = {
+            // Screen dimensions
+            screen: {
+                width: window.screen.width,
+                height: window.screen.height
+            },
             
-            if (userDotX < 0) { userDotX = 0; }
-            if (userDotX > width) { userDotX = width; }
-            if (userDotY < 0) { userDotY = 0; }
-            if (userDotY > height) { userDotY = height; }
-            userDot.style.left = `${userDotX}px`;
-            userDot.style.top = `${userDotY}px`;
-        }
-
-        function moveUserReverseXY(e) {
+            // Positions
+            user: { x: 0, y: 0 },
+            fly: { x: 0, y: 0 },
             
-            userDotX -= e.movementX;
-            userDotY -= e.movementY;
-            userDotX = Math.max(0, Math.min(width, userDotX));
-            userDotY = Math.max(0, Math.min(height - 50, userDotY));
+            // Game progress
+            currentMode: "normal",
+            trialIndex: 0,
+            trialsRemaining: 0,
+            postPhaseIndex: -1,  // -1 means not in post phase
             
-            userDot.style.left = `${userDotX}px`;
-            userDot.style.top = `${userDotY}px`;
+            // Timing
+            trialStartTime: 0,
+            
+            // Data collection
+            trials: {},
+            currentTrialData: {
+                userPositions: [],
+                flyPositions: [],
+                distances: []
+            },
+            allDistances: [],
+            phis: [],  // Phase offsets for fly movement
+            
+            // Animation & intervals
+            animationFrame: null,
+            recordingInterval: null,
+            currentMouseHandler: null,
+            
+            // Flags
+            canNavigate: true
+        };
+
+        // ============================================================
+        // COMPUTED VALUES (derived from config and screen)
+        // ============================================================
+        function computeAmplitudes() {
+            const { width, height } = state.screen;
+            const { amplitudes, scaleFactors, minDimensions } = FLY_PARAMS;
+            
+            let a_y, a_x;
+            
+            if (height < minDimensions.height) {
+                a_y = scaleFactors.y.smallScreenRatios.map(r => r * height / 2);
+            } else {
+                a_y = amplitudes.y.map(n => scaleFactors.y.base * n);
+            }
+            
+            if (width < minDimensions.width) {
+                a_x = scaleFactors.x.smallScreenRatios.map(r => r * width / 2);
+            } else {
+                a_x = amplitudes.x.map(n => scaleFactors.x.base * n);
+            }
+            
+            return { a_x, a_y };
         }
 
-        function moveUserOffsetRadians(e) {
-            const radians = Math.PI / 2;
+        const amplitudes = computeAmplitudes();
+        const samplingDelay = 1000 / CONFIG.sampling.rate;
 
-            // Rotate the delta
-            const rotatedDeltaX = e.movementX * Math.cos(radians) - e.movementY * Math.sin(radians);
-            const rotatedDeltaY = e.movementX * Math.sin(radians) + e.movementY * Math.cos(radians);
+        // ============================================================
+        // DOM ELEMENTS
+        // ============================================================
+        const elements = {
+            userDot: document.getElementById('userDot'),
+            flyDot: document.getElementById('flyDot'),
+            modal: document.getElementById('modal'),
+            modalMessage: document.getElementById('modalMessage'),
+            modalButton: document.getElementById('modalButton'),
+            countdownTimer: document.getElementById('countdownTimer'),
+            trialCounter: document.getElementById('trialCounter')
+        };
 
-            userDotX += rotatedDeltaX;
-            userDotY += rotatedDeltaY;
+        // ============================================================
+        // FIREBASE SETUP
+        // ============================================================
+        let db, auth;
+        let prolificId = localStorage.getItem('prolificId') || "anonymous";
 
-            userDotX = Math.max(0, Math.min(width, userDotX));
-            userDotY = Math.max(0, Math.min(height, userDotY));
-
-            userDot.style.left = `${userDotX}px`;
-            userDot.style.top = `${userDotY}px`;
-
+        async function initializeFirebase() {
+            const { initializeFirebase: initFB } = await import('./firebaseConfig.js');
+            const { doc, setDoc, Timestamp, collection } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+            const { signInAnonymously } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+            
+            const firebase = initFB();
+            db = firebase.db;
+            auth = firebase.auth;
+            
+            // Store these for later use
+            window.firebaseModules = { doc, setDoc, Timestamp, collection, signInAnonymously };
+            
+            return firebase;
         }
 
-        function distanceToDot(){
-            dist = Math.sqrt((userDotX - x) ** 2 + (userDotY - y) ** 2)
-            return dist;
-    
+        // ============================================================
+        // CONSENT CHECK
+        // ============================================================
+        function checkConsent() {
+            if (!CONFIG.navigation.requireConsent) return;
+            
+            if (sessionStorage.getItem('gameStarted') !== 'true') {
+                window.location.href = CONFIG.navigation.consentPage;
+            } else {
+                sessionStorage.removeItem('gameStarted');
+            }
+        }
+
+        // ============================================================
+        // FULLSCREEN & CURSOR
+        // ============================================================
+        function goFullscreen() {
+            const docEl = document.documentElement;
+            const requestFS = docEl.requestFullscreen || 
+                              docEl.mozRequestFullScreen || 
+                              docEl.webkitRequestFullscreen || 
+                              docEl.msRequestFullscreen;
+            
+            if (requestFS) {
+                requestFS.call(docEl);
+            }
+            document.body.style.cursor = 'none';
+        }
+
+        function showCursor() {
+            document.body.style.cursor = 'auto';
+        }
+
+        function hideCursor() {
+            document.body.style.cursor = 'none';
+        }
+
+        // ============================================================
+        // MOUSE MOVEMENT HANDLERS
+        // ============================================================
+        const mouseHandlers = {
+            normal(e) {
+                const { width, height } = state.screen;
+                state.user.x = Math.max(0, Math.min(width, e.clientX));
+                state.user.y = Math.max(0, Math.min(height, e.clientY));
+                updateUserDotPosition();
+            },
+            
+            reverse(e) {
+                const { width, height } = state.screen;
+                state.user.x = Math.max(0, Math.min(width, state.user.x - e.movementX));
+                state.user.y = Math.max(0, Math.min(height - 50, state.user.y - e.movementY));
+                updateUserDotPosition();
+            },
+            
+            rotate(e) {
+                const { width, height } = state.screen;
+                const radians = CONFIG.perturbation.rotationAngle;
+                
+                const rotatedDeltaX = e.movementX * Math.cos(radians) - e.movementY * Math.sin(radians);
+                const rotatedDeltaY = e.movementX * Math.sin(radians) + e.movementY * Math.cos(radians);
+                
+                state.user.x = Math.max(0, Math.min(width, state.user.x + rotatedDeltaX));
+                state.user.y = Math.max(0, Math.min(height, state.user.y + rotatedDeltaY));
+                updateUserDotPosition();
+            }
+        };
+
+        function updateUserDotPosition() {
+            elements.userDot.style.left = `${state.user.x}px`;
+            elements.userDot.style.top = `${state.user.y}px`;
+        }
+
+        function setMouseHandler(mode) {
+            if (state.currentMouseHandler) {
+                document.removeEventListener('mousemove', state.currentMouseHandler);
+            }
+            
+            state.currentMouseHandler = mouseHandlers[mode] || mouseHandlers.normal;
+            document.addEventListener('mousemove', state.currentMouseHandler);
+        }
+
+        // ============================================================
+        // FLY MOVEMENT
+        // ============================================================
+        function generatePhi() {
+            // If in post phase, reuse saved phis
+            if (state.postPhaseIndex > -1) {
+                return state.phis[state.postPhaseIndex++];
+            }
+            
+            const phi = [];
+            for (let i = 0; i < 7; i++) {
+                phi.push(Math.random() * 2 * Math.PI - Math.PI);
+            }
+            return phi;
+        }
+
+        function updateFlyPosition(t, phi) {
+            const { width, height } = state.screen;
+            const { a_x, a_y } = amplitudes;
+            const { frequencies } = FLY_PARAMS;
+            
+            let dx = 0, dy = 0;
+            
+            for (let i = 0; i < 7; i++) {
+                dx += a_x[i] * Math.cos(2 * Math.PI * t * frequencies.x[i] + phi[i]);
+                dy += a_y[i] * Math.cos(2 * Math.PI * t * frequencies.y[i] + phi[i]);
+            }
+            
+            state.fly.x = dx + width / 2;
+            state.fly.y = dy + height / 2;
+            
+            elements.flyDot.style.left = `${state.fly.x}px`;
+            elements.flyDot.style.top = `${state.fly.y}px`;
+        }
+
+        function placeFlyAtStart() {
+            const phi = state.phis[state.phis.length - 1];
+            updateFlyPosition(0, phi);
+        }
+
+        // ============================================================
+        // DISTANCE CALCULATIONS
+        // ============================================================
+        function getDistance() {
+            return Math.sqrt(
+                Math.pow(state.user.x - state.fly.x, 2) + 
+                Math.pow(state.user.y - state.fly.y, 2)
+            );
         }
 
         function calculateDistancePercentages(distances) {
             const maxDistance = Math.max(...distances);
             const sectionSizes = {
-                0: Math.round(1  * maxDistance / 15),
-                1: Math.round(3  * maxDistance / 15),
-                2: Math.round(7  * maxDistance / 15),
+                0: Math.round(1 * maxDistance / 15),
+                1: Math.round(3 * maxDistance / 15),
+                2: Math.round(7 * maxDistance / 15),
                 3: Math.round(11 * maxDistance / 15),
                 4: Math.round(15 * maxDistance / 15)
             };
+            
             const sections = [0, 0, 0, 0, 0];
-
+            
             distances.forEach(distance => {
-                if (distance < sectionSizes[0]) {
-                    sections[0]++;
-                } else if (distance < sectionSizes[1]) {
-                    sections[1]++;
-                } else if (distance < sectionSizes[2]) {
-                    sections[2]++;
-                } else if (distance < sectionSizes[3]) {
-                    sections[3]++;
-                } else {
-                    sections[4]++;
-                }
+                if (distance < sectionSizes[0]) sections[0]++;
+                else if (distance < sectionSizes[1]) sections[1]++;
+                else if (distance < sectionSizes[2]) sections[2]++;
+                else if (distance < sectionSizes[3]) sections[3]++;
+                else sections[4]++;
             });
-
+            
             const percentages = sections.map(count => (count / distances.length) * 100);
-            console.log("Section Sizes:", sectionSizes);
-            console.log("Distance Percentages:", percentages);
             return { sectionSizes, percentages };
         }
 
-        function gen_phi(){
-            if (post > -1){ // if in post mode, use old phis
-                let phi = phis[post]
-                post ++;
-                return phi;
-            }
-
-            const phi = [];
-            for (let i = 0; i < 7; i++) {
-                // Generate random number between -π and π
-                const randomValue = (Math.random() * 2 * Math.PI) - Math.PI;
-                phi.push(randomValue);
-            }
-            return phi;
-        }
-
-        function moveRandomDot(t, phi) {
-            let dx = 0;
-            for (let i = 0; i < 7; i++) {
-                dx += a_x[i] * Math.cos(2 * Math.PI * t * freq_x[i] + phi[i]);
-            }
-            x = dx + width / 2;
-            let dy = 0;
-            for (let i = 0; i < 7; i++) {
-                dy += a_y[i] * Math.cos(2 * Math.PI * t * freq_y[i] + phi[i]);
-            }
-            y = dy + height / 2;
-            //console.log(x, y);
-
-            /*
-            if (Math.random() < turnProbability) {
-                const turnAngle = (Math.random() * 2 - 1) * maxTurnAngle;
-                const currentAngle = Math.atan2(vy, vx);
-                const newAngle = currentAngle + turnAngle;
-                const speed = speeds[Math.floor(Math.random() * speeds.length)];
-                vx = Math.cos(newAngle) * speed;
-                vy = Math.sin(newAngle) * speed;
-            }
-
-            x += vx;
-            y += vy;
-            let rando_minX = width / 8;
-            let rando_maxX = width - rando_minX;
-            let rando_minY = height / 12;
-            let rando_maxY = height - rando_minY;
-            if (x < rando_minX) { x = rando_minX; vx = -vx; } else if (x > rando_maxX) { x = rando_maxX; vx = -vx; }
-            if (y < rando_minY) { y = rando_minY; vy = -vy; } else if (y > rando_maxY) { y = rando_maxY; vy = -vy; }
-                */
-            randomDot.style.left = `${x}px`;
-            randomDot.style.top = `${y}px`;
-        }
-
-        function setMousemoveHandler() {
-            if (currentMousemoveHandler) {
-                document.removeEventListener('mousemove', currentMousemoveHandler);
-            }
-
-            if (game_type === "normal") {
-                currentMousemoveHandler = moveUser;
-            } else if (game_type === "reverse") {
+        // ============================================================
+        // MODAL SYSTEM
+        // ============================================================
+        function showModal(message) {
+            return new Promise(resolve => {
+                elements.modalMessage.textContent = message;
+                elements.modal.classList.remove('hidden');
+                showCursor();
                 
-
-                currentMousemoveHandler = moveUserReverseXY;
-            } else if (game_type === "rotate") {
-                currentMousemoveHandler = moveUserOffsetRadians;
-            }
-
-            document.addEventListener('mousemove', currentMousemoveHandler);
-        }
-
-        async function uploadDoc(start, end, tag){
-            if (start === end){return; } 
-            let entries = Object.entries(trials).slice(start, end);
-            let trial_data = Object.fromEntries(entries);
-            let collectionPath = prolificId + "_" + auth.currentUser.uid
-            await setDoc(doc(db, collectionPath, tag), {
-                trials: trial_data,
-                uid: auth.currentUser.uid,
-                timestamp: Timestamp.fromDate(new Date()),
-                width: width,
-                height: height
+                const handleClick = () => {
+                    elements.modalButton.removeEventListener('click', handleClick);
+                    hideModal();
+                    resolve();
+                };
+                
+                elements.modalButton.addEventListener('click', handleClick);
             });
         }
 
-        // This was given up since it might not compress enough
-        /*async function uploadCompressedData(trial_data) {
-            // Convert trial_data to JSON string
-            const jsonString = JSON.stringify(trial_data);
-        
-            // Compress using pako (gzip)
-            const compressedData = pako.deflate(jsonString, { to: "string" });
-        
-            // Convert compressed data (Uint8Array) to Base64 string
-            const base64CompressedData = btoa(String.fromCharCode(...compressedData));
-        
-            // Store in Firestore
-            await setDoc(doc(db, "user_data", auth.currentUser.uid), {
-                trials: base64CompressedData,  // Store base64-encoded string
-                uid: auth.currentUser.uid,
-                timestamp: Timestamp.fromDate(new Date()),
-                width: width,
-                height: height
-            });
-        
-            console.log("Compressed data uploaded successfully.");
-        }*/
-
-
-        async function uploadDotData(mode) {
-            trial_num.textContent = "Please wait for data to be processed and uploaded (It's a lot of data).";
-            trial_num.style.top = '10px';   // Set top position
-            trial_num.style.left = '50%';   // Center horizontally
-            trial_num.style.fontSize = '20px';
-            trial_num.style.transform = 'translateX(-50%)'; // Adjust for perfect centering
-            
-            try {
-                // Uploads 7 docs because the total space for the data exceeds 1Mb by quite a bit
-                if (mode === "normal"){
-                    await uploadDoc(0, Math.floor(n_controls/2), "control1");
-                    await uploadDoc(Math.floor(n_controls/2), n_controls, "control2");
-                }
-                else if (mode === perturb_style){
-                    await uploadDoc(n_controls, n_controls + Math.floor(n_perturbs/4), perturb_style + "1");
-                    await uploadDoc(n_controls + Math.floor(n_perturbs/4), n_controls + Math.floor(n_perturbs/2), perturb_style + "2");
-                    await uploadDoc(n_controls + Math.floor(n_perturbs/2), n_controls + Math.floor(3*n_perturbs/4), perturb_style + "3");
-                    await uploadDoc(n_controls + Math.floor(3*n_perturbs/4), n_controls + n_perturbs, perturb_style + "4");
-                }
-                else{
-                    await uploadDoc(n_controls + n_perturbs, n_controls + n_perturbs + n_posts, "post");
-                }
-
-                
-                //await uploadCompressedData(trials);
-                console.log("User positions saved!");
-            } catch (error) {
-                console.error("Firestore write error:", error.message);
-                console.error("Error details:", error);
-                change_window = false;
-            }
-            trial_num.textContent = "0";
-            trial_num.style.left = '';
-            trial_num.style.transform = '';
-            trial_num.style.fontSize = '80px';
-
-        }
-
-        function getHighlights(){
-
-            // Flatten all distances into a single array
-            const distance_data_1d = allDistances.flat();
-
-            const cumulativeLengths = allDistances.reduce((acc, arr) => {
-                acc.push((acc.length > 0 ? acc[acc.length - 1] : 0) + arr.length);
-                return acc;
-            }, []);
-            const newHighlights = [cumulativeLengths[n_controls-1],
-                                   cumulativeLengths[n_controls + n_perturbs-1],
-                                   cumulativeLengths[n_controls + n_perturbs + n_posts-1]];
-            console.log(cumulativeLengths);
-            console.log(newHighlights);
-            
-            return {distance_data_1d, newHighlights};
-        }
-
-        async function play(t, phi) {
-            if (game_type === "done") {
-                console.log("Game done");
-                const {distance_data_1d,newHighlights} = getHighlights();
-                const { sectionSizes, percentages } = calculateDistancePercentages(distance_data_1d);
-                localStorage.setItem('sectionSizes', JSON.stringify(Object.values(sectionSizes)));
-                localStorage.setItem('percentages', JSON.stringify(percentages));
-                localStorage.setItem('distances', JSON.stringify(distance_data_1d));
-                localStorage.setItem('game_timelegths', JSON.stringify(game_type_lengths));
-                localStorage.setItem('highlights', JSON.stringify(newHighlights));
-                if (do_upload){
-                    await uploadDotData("post");
-                }
-                if(change_window){
-                    window.location.href = `done.html`;
-                }
-                return;
-            }
-            t = (Date.now() - start)/dt
-            moveRandomDot(t, phi);
-            
-
-            // Handles changing color of the user.
-            // Right now the user is a shadow so idt it will change color
-            //
-            if (distanceToDot() < 100){
-                //userDot.style.backgroundColor = 'lime';
-                userDot.style.backgroundImage = "url('shadow_green.png')";
-                userDot.style.backgroundSize = 'contain';
-                userDot.style.backgroundPosition = 'center';
-                userDot.style.width = '60px';
-                userDot.style.height = '60px';
-                
-                //close_count += 1;
-            }
-            else{
-                //userDot.style.backgroundColor = 'red';
-                userDot.style.backgroundImage = "url('shadow.png')";
-                userDot.style.backgroundSize = 'contain';
-                userDot.style.backgroundPosition = 'center';
-                userDot.style.width = '50px';
-                userDot.style.height = '50px';
-                
-            }
-            //total_counts += 1;
-            animframe = requestAnimationFrame(()=> play(t, phi));
-        }
-
-        function recordPos(){
-            intervalId = setInterval(() => {
-                let time = Date.now();
-                userPositions.push({ x: userDotX, y: userDotY, game_mode: game_type, timestamp: time });
-                followPositions.push({ x: x, y: y, game_mode: game_type, timestamp: time });
-                distances.push(distanceToDot());
-            }, samp_delay);
-            return intervalId;
-        }
-        function stopRecordPos(intervalId){
-            clearInterval(intervalId)
-        }
-
-        function showCursor() {
-            document.body.style.cursor = "auto"; // Ensure cursor is visible
-        }
-        
-        function hideCursor() {
-            document.body.style.cursor = "none"; // Hide cursor when the game resumes
-        }
-        function pauseGame(pause_mouse = true){
-            // Center the dots
-            userDotX = width/2;
-            userDotY = height/2;
-           // x = width/2;
-            //y = height/2;
-            userDot.style.left = `${userDotX}px`;
-            userDot.style.top = `${userDotY}px`;
-            //randomDot.style.left = `${x}px`;
-            //randomDot.style.top = `${y}px`;
-
-            cancelAnimationFrame(animframe);
-            if (pause_mouse){userDot.style.visibility = 'hidden';}
-        }
-        function resumeGame(do_gen_phi = true){ 
-            setMousemoveHandler();
-            userDot.style.visibility = 'visible';
-            if (do_gen_phi){
-                let phi = gen_phi();
-                phis.push(phi);
-            }
-
-            play(0, phis[phis.length - 1]);
-        }
-        // Function to show the alert
-        function showAlert(message, callback) {
-            const modal = document.getElementById('customAlert');
-            modal.querySelector("p").innerText = message; // Set custom message
-            modal.style.display = 'flex';
-            showCursor();
-
-            // Ensure clicking "OK" closes the modal and resumes the game
-            document.getElementById("okButton").onclick = async function(event) {
-                // Get the mouse coordinates
-      
-                console.log("User Dot Position:", userDotX, userDotY);
-
-                closeAlert();
-                
-                // Run the next step after closing
-                if (callback) await callback();
-            };
-            
-        }
-
-        // Function to close the alert and resume game
-        function closeAlert() {
-            document.getElementById('customAlert').style.display = 'none';
+        function hideModal() {
+            elements.modal.classList.add('hidden');
             hideCursor();
-            resumeGame(); // Ensure the game resumes after closing
         }
 
-        randomDot.style.left = `${x}px`;
-        randomDot.style.top = `${y}px`;
-        userDot.style.left = `${x}px`;
-        userDot.style.top = `${y}px`;
-
-        /*console.log("User Positions:", userPositions);
-        console.log("Follow Positions:", followPositions);
-        console.log("Distances:", distances);
-        console.log("Phis:", phis);
-        console.log("User ID:", auth.currentUser.uid);*/
-
-        function addTrialData(){
-            trials[trial]={
-                "userPositions":userPositions,
-                "flyPositions":followPositions,
-                "phis": phis[phis.length - 1], // keep the last phis
-            }
-            trial++;
-            allDistances.push(distances);
-            distances = [];
-            userPositions = [];
-            followPositions = [];
-        }
-
-        async function next_mode(mode, trial, isFinal) {
-            intervalId = recordPos();
-            return new Promise((resolve) => {
-                console.log(`Game type changed to ${mode}`);
-
-                function runTrial(remainingTrials) {
-                    trial_num.textContent = trials_left;
-                    trials_left--;
-                    start = Date.now();
-                    if(remainingTrials <=0){ throw new Error("Remaining trials must be positive"); }
-                    
-                    if(isFinal && remainingTrials === 1){ // When it's the last mode of the game, don't alert
-                        setTimeout(() => {
-                            stopRecordPos(intervalId)
-                            //highlights.push(distances.length);
-                            addTrialData();
-                            // In the play loop, this variable change
-                            // cause sthe loop to end.
-                            game_type = "done"; 
-                            resolve();
-                        }, game_type_lengths[mode]);
-                    }
-
-                    else if (remainingTrials === 1) { // When it's the last trial of the mode, 
-                                                     // Alert a change of controls
-                        setTimeout(async () => {
-                            console.log(`Running trial for mode: ${mode}, remaining trials: ${remainingTrials - 1}`);
-                            pauseGame();
-                            stopRecordPos(intervalId);
-                            //highlights.push(distances.length);
-                            addTrialData();
-                            let msg;
-                            if (game_type === perturb_style){
-                                msg = 'Great Job! Now, your controls will switched back to normal! Click OK to continue.';
-                            }
-                            else{
-                                msg = 'Great Job! Now, your controls will be switched! Try to adapt quickly. Click OK to continue.';
-                            }
-                            if(do_upload){await uploadDotData(game_type);}
-                            showAlert(msg, () => {
-                                //close_count = 0;
-                                //total_counts = 0;
-                                
-                                resolve(); // Dont recursive call since it's the last trials
-                            });
-                        }, game_type_lengths[mode]);
-
-                    
-                    } else {
-                        setTimeout(() => {
-                            console.log(`Running trial for mode: ${mode}, remaining trials: ${remainingTrials}`);
-                            pauseGame();
-                            stopRecordPos(intervalId);
-                            addTrialData();
-                            showAlert(`Good job! Click OK to continue the game.`, async () => {
-                                
-                                //close_count = 0;
-                                //total_counts = 0;
-                                placeDot();
-                                await pauseFollowDotMotion(0.5); // Pause for 1 second
-                                intervalId = recordPos();
-                                runTrial(remainingTrials - 1);
-                            });
-                        }, game_type_lengths[mode]);
-                    }
-                }
-
-                runTrial(trial);
+        function showStartModal(message) {
+            return new Promise(resolve => {
+                elements.modalMessage.textContent = message;
+                elements.modal.classList.remove('hidden');
+                showCursor();
+                
+                const handleClick = () => {
+                    elements.modalButton.removeEventListener('click', handleClick);
+                    goFullscreen();
+                    hideModal();
+                    resolve();
+                };
+                
+                elements.modalButton.addEventListener('click', handleClick);
             });
         }
 
-        async function runGameModes() {
-            game_type = "normal";
-            setMousemoveHandler();
-            placeDot();
-            await pauseFollowDotMotion(0.5); 
-            await next_mode("normal", n_controls, false);
-
-            game_type = perturb_style;
-            setMousemoveHandler();
-            placeDot();
-            await pauseFollowDotMotion(0.5); // Pause for 2 second
-            await next_mode(perturb_style, n_perturbs, false);
-
-            game_type = "normal";
-            post = 0;
-            setMousemoveHandler();
-            await pauseFollowDotMotion(0.5); // Pause for 2 second
-            await next_mode("normal", n_posts, true);
-        }
-
-        function pauseFollowDotMotion(seconds) {
-            return new Promise((resolve) => {
-                pauseGame(false); // Pause the game but keep the mousemove handler
-                const timerDisplay = document.getElementById("timerDisplay");
-                let remainingTime = seconds;
-        
-                timerDisplay.innerText = `${remainingTime}s`;
-                timerDisplay.style.display = "block"; // Show timer
-        
-                const countdownInterval = setInterval(() => {
-                    remainingTime = (remainingTime*10 - 1)/10; // Annoying way to deal with floating points
-                    if (remainingTime <= 0) {
-                        clearInterval(countdownInterval);
-                        timerDisplay.style.display = "none"; // Hide timer when done
-                        resumeGame(false); // Resume the game without generating new phi
+        // ============================================================
+        // COUNTDOWN TIMER
+        // ============================================================
+        function showCountdown(seconds) {
+            return new Promise(resolve => {
+                let remaining = seconds;
+                
+                elements.countdownTimer.textContent = `${remaining}s`;
+                elements.countdownTimer.classList.remove('hidden');
+                
+                const interval = setInterval(() => {
+                    remaining = Math.round((remaining * 10 - 1)) / 10;
+                    
+                    if (remaining <= 0) {
+                        clearInterval(interval);
+                        elements.countdownTimer.classList.add('hidden');
                         resolve();
                     } else {
-                        timerDisplay.innerText = `${remainingTime}s`;
+                        elements.countdownTimer.textContent = `${remaining}s`;
                     }
                 }, 100);
             });
         }
-        
 
-        function placeDot(){
-            let dx = 0;
-            let phi = phis[phis.length - 1];
-            for (let i = 0; i < 7; i++) {
-                dx += a_x[i] * Math.cos(phi[i]);
-            }
-            x = dx + width / 2;
-            let dy = 0;
-            for (let i = 0; i < 7; i++) {
-                dy += a_y[i] * Math.cos(phi[i]);
-            }
-            y = dy + height / 2;
-            randomDot.style.left = `${x}px`;
-            randomDot.style.top = `${y}px`;
-            console.log('placing dot at ', x, y);
-        }
-
-
-        function startAlert(msg, callback) {
-            const modal = document.getElementById('customAlert');
-            modal.querySelector("p").innerText = msg; // Set custom message
-            modal.style.display = 'flex';
-            showCursor();
-
-            // Ensure clicking "OK" closes the modal and resumes the game
-            document.getElementById("okButton").onclick = function() {
-                goFullscreen();
-                document.getElementById('customAlert').style.display = 'none';
-                hideCursor();
-                callback(); // Run the next step only after closing
-            };
-        }
-
-        signInAnonymously(auth)
-            .then(() => {
-                console.log("User signed in anonymously");
-
-            
-                startAlert("Welcome! Get ready to follow the fly. You will have a countdown above before the game begins on each trial. Press OK to begin and go fullscreen", ()=>{
-                    setMousemoveHandler();
-                    let phi = gen_phi();
-                    phis.push(phi);
-                    placeDot();
-                    start = Date.now();
-                    play(0, phi);
-
-                    runGameModes();
-                });
-
+        // ============================================================
+        // DATA RECORDING
+        // ============================================================
+        function startRecording() {
+            state.recordingInterval = setInterval(() => {
+                const time = Date.now();
                 
-            })
-            .catch((error) => {
-                console.error("Auth Error:", error.message);
+                state.currentTrialData.userPositions.push({
+                    x: state.user.x,
+                    y: state.user.y,
+                    game_mode: state.currentMode,
+                    timestamp: time
+                });
+                
+                state.currentTrialData.flyPositions.push({
+                    x: state.fly.x,
+                    y: state.fly.y,
+                    game_mode: state.currentMode,
+                    timestamp: time
+                });
+                
+                state.currentTrialData.distances.push(getDistance());
+            }, samplingDelay);
+        }
+
+        function stopRecording() {
+            if (state.recordingInterval) {
+                clearInterval(state.recordingInterval);
+                state.recordingInterval = null;
+            }
+        }
+
+        function saveTrialData() {
+            state.trials[state.trialIndex] = {
+                userPositions: state.currentTrialData.userPositions,
+                flyPositions: state.currentTrialData.flyPositions,
+                phis: state.phis[state.phis.length - 1]
+            };
+            
+            state.allDistances.push(state.currentTrialData.distances);
+            
+            // Reset current trial data
+            state.currentTrialData = {
+                userPositions: [],
+                flyPositions: [],
+                distances: []
+            };
+            
+            state.trialIndex++;
+        }
+
+        // ============================================================
+        // DATA UPLOAD
+        // ============================================================
+        function showUploadStatus(show) {
+            if (!CONFIG.upload.showUploadStatus) return;
+            
+            if (show) {
+                elements.trialCounter.textContent = CONFIG.messages.uploading;
+                elements.trialCounter.classList.add('uploading');
+            } else {
+                elements.trialCounter.textContent = "0";
+                elements.trialCounter.classList.remove('uploading');
+            }
+        }
+
+        async function uploadTrialData(startIndex, endIndex, docName) {
+            if (startIndex === endIndex) return;
+            
+            const { doc, setDoc, Timestamp, collection } = window.firebaseModules;
+            const { experimentCollection, trialsSubcollection } = CONFIG.firebase;
+            
+            const entries = Object.entries(state.trials).slice(startIndex, endIndex);
+            const trialData = Object.fromEntries(entries);
+            
+            // Build user ID: prolificId_visitorUid
+            const oderId = `${prolificId}_${auth.currentUser.uid}`;
+            
+            // Structure: experiments_v2 / oderId / trials / docName
+            // First, create/update the user document with metadata
+            const userDocRef = doc(db, experimentCollection, oderId);
+            await setDoc(userDocRef, {
+                oderId: oderId,
+                visitorUid: auth.currentUser.uid,
+                prolificId: prolificId,
+                createdAt: Timestamp.fromDate(new Date()),
+                screenWidth: state.screen.width,
+                screenHeight: state.screen.height
+            }, { merge: true });  // merge to avoid overwriting on subsequent uploads
+            
+            // Then, add trial data to the trials subcollection
+            const trialsCollectionRef = collection(db, experimentCollection, oderId, trialsSubcollection);
+            const trialDocRef = doc(trialsCollectionRef, docName);
+            
+            await setDoc(trialDocRef, {
+                trials: trialData,
+                uploadedAt: Timestamp.fromDate(new Date()),
+                trialType: docName
             });
+        }
+
+        async function uploadPhaseData(phase) {
+            if (!CONFIG.upload.enabled) return;
+            
+            showUploadStatus(true);
+            
+            try {
+                const { trials } = CONFIG;
+                const docNames = CONFIG.firebase.documentNames;
+                
+                if (phase === "normal") {
+                    const half = Math.floor(trials.control / 2);
+                    await uploadTrialData(0, half, docNames.control[0]);
+                    await uploadTrialData(half, trials.control, docNames.control[1]);
+                } else if (phase === CONFIG.perturbation.style) {
+                    const quarter = Math.floor(trials.perturb / 4);
+                    const base = trials.control;
+                    await uploadTrialData(base, base + quarter, docNames.perturb[0]);
+                    await uploadTrialData(base + quarter, base + 2 * quarter, docNames.perturb[1]);
+                    await uploadTrialData(base + 2 * quarter, base + 3 * quarter, docNames.perturb[2]);
+                    await uploadTrialData(base + 3 * quarter, base + trials.perturb, docNames.perturb[3]);
+                } else if (phase === "post") {
+                    const base = trials.control + trials.perturb;
+                    await uploadTrialData(base, base + trials.post, docNames.post[0]);
+                }
+                
+                console.log(`${phase} phase data uploaded successfully`);
+            } catch (error) {
+                console.error("Upload error:", error);
+                state.canNavigate = false;
+            }
+            
+            showUploadStatus(false);
+        }
+
+        // ============================================================
+        // GAME LOOP
+        // ============================================================
+        function gameLoop(phi) {
+            if (state.currentMode === "done") {
+                finishGame();
+                return;
+            }
+            
+            const t = (Date.now() - state.trialStartTime) / CONFIG.sampling.dt;
+            updateFlyPosition(t, phi);
+            
+            // Update user dot appearance based on proximity
+            const isClose = getDistance() < CONFIG.proximity.closeDistance;
+            elements.userDot.classList.toggle('close', isClose);
+            
+            state.animationFrame = requestAnimationFrame(() => gameLoop(phi));
+        }
+
+        function pauseGame(hideUser = true) {
+            // Center user position
+            state.user.x = state.screen.width / 2;
+            state.user.y = state.screen.height / 2;
+            updateUserDotPosition();
+            
+            cancelAnimationFrame(state.animationFrame);
+            
+            if (hideUser) {
+                elements.userDot.style.visibility = 'hidden';
+            }
+        }
+
+        function resumeGame(generateNewPhi = true) {
+            setMouseHandler(state.currentMode === CONFIG.perturbation.style ? 
+                           CONFIG.perturbation.style : 'normal');
+            
+            elements.userDot.style.visibility = 'visible';
+            
+            if (generateNewPhi) {
+                const phi = generatePhi();
+                state.phis.push(phi);
+            }
+            
+            state.trialStartTime = Date.now();
+            gameLoop(state.phis[state.phis.length - 1]);
+        }
+
+        // ============================================================
+        // TRIAL MANAGEMENT
+        // ============================================================
+        async function runTrials(mode, count, isFinalPhase) {
+            const duration = CONFIG.durations[mode] || CONFIG.durations.normal;
+            
+            startRecording();
+            
+            for (let i = 0; i < count; i++) {
+                const isLastTrial = i === count - 1;
+                
+                elements.trialCounter.textContent = state.trialsRemaining;
+                state.trialsRemaining--;
+                state.trialStartTime = Date.now();
+                
+                // Wait for trial duration
+                await new Promise(resolve => setTimeout(resolve, duration));
+                
+                pauseGame();
+                stopRecording();
+                saveTrialData();
+                
+                if (isFinalPhase && isLastTrial) {
+                    // Final trial of the entire game
+                    state.currentMode = "done";
+                } else if (isLastTrial) {
+                    // Last trial of this phase - show phase transition message
+                    const message = mode === CONFIG.perturbation.style ? 
+                                   CONFIG.messages.perturbToPost : 
+                                   CONFIG.messages.controlToPerturb;
+                    
+                    await uploadPhaseData(state.currentMode);
+                    await showModal(message);
+                } else {
+                    // Regular trial completion
+                    await showModal(CONFIG.messages.trialComplete);
+                    placeFlyAtStart();
+                    await showCountdown(CONFIG.countdown.duration);
+                    startRecording();
+                }
+            }
+        }
+
+        async function runGame() {
+            const { trials } = CONFIG;
+            state.trialsRemaining = trials.control + trials.perturb + trials.post;
+            
+            // Phase 1: Control trials
+            state.currentMode = "normal";
+            setMouseHandler('normal');
+            placeFlyAtStart();
+            await showCountdown(CONFIG.countdown.duration);
+            await runTrials("normal", trials.control, false);
+            
+            // Phase 2: Perturbation trials
+            state.currentMode = CONFIG.perturbation.style;
+            setMouseHandler(CONFIG.perturbation.style);
+            placeFlyAtStart();
+            await showCountdown(CONFIG.countdown.duration);
+            await runTrials(CONFIG.perturbation.style, trials.perturb, false);
+            
+            // Phase 3: Post trials (reusing control phis)
+            state.currentMode = "normal";
+            state.postPhaseIndex = 0;
+            setMouseHandler('normal');
+            await showCountdown(CONFIG.countdown.duration);
+            await runTrials("normal", trials.post, true);
+        }
+
+        // ============================================================
+        // GAME COMPLETION
+        // ============================================================
+        function getHighlights() {
+            const flatDistances = state.allDistances.flat();
+            const { trials } = CONFIG;
+            
+            const cumulativeLengths = state.allDistances.reduce((acc, arr) => {
+                acc.push((acc.length > 0 ? acc[acc.length - 1] : 0) + arr.length);
+                return acc;
+            }, []);
+            
+            const highlights = [
+                cumulativeLengths[trials.control - 1],
+                cumulativeLengths[trials.control + trials.perturb - 1],
+                cumulativeLengths[trials.control + trials.perturb + trials.post - 1]
+            ];
+            
+            return { flatDistances, highlights };
+        }
+
+        async function finishGame() {
+            console.log("Game complete");
+            
+            const { flatDistances, highlights } = getHighlights();
+            const { sectionSizes, percentages } = calculateDistancePercentages(flatDistances);
+            
+            // Store results for completion page
+            localStorage.setItem('sectionSizes', JSON.stringify(Object.values(sectionSizes)));
+            localStorage.setItem('percentages', JSON.stringify(percentages));
+            localStorage.setItem('distances', JSON.stringify(flatDistances));
+            localStorage.setItem('game_timelegths', JSON.stringify(CONFIG.durations));
+            localStorage.setItem('highlights', JSON.stringify(highlights));
+            
+            await uploadPhaseData("post");
+            
+            if (state.canNavigate) {
+                window.location.href = CONFIG.navigation.completionPage;
+            }
+        }
+
+        // ============================================================
+        // INITIALIZATION
+        // ============================================================
+        async function initialize() {
+            checkConsent();
+            
+            // Initialize positions
+            state.user.x = state.screen.width / 2;
+            state.user.y = state.screen.height / 2;
+            state.fly.x = state.screen.width / 2;
+            state.fly.y = state.screen.height / 2;
+            
+            // Position dots
+            updateUserDotPosition();
+            elements.flyDot.style.left = `${state.fly.x}px`;
+            elements.flyDot.style.top = `${state.fly.y}px`;
+            
+            try {
+                await initializeFirebase();
+                await window.firebaseModules.signInAnonymously(auth);
+                console.log("User signed in anonymously");
+                
+                await showStartModal(CONFIG.messages.welcome);
+                
+                // Generate initial phi and start game
+                setMouseHandler('normal');
+                const phi = generatePhi();
+                state.phis.push(phi);
+                placeFlyAtStart();
+                
+                state.trialStartTime = Date.now();
+                gameLoop(phi);
+                
+                await runGame();
+            } catch (error) {
+                console.error("Initialization error:", error);
+            }
+        }
+
+        // Start the game
+        initialize();
     </script>
 </body>
 </html>
