@@ -5,502 +5,951 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Thank You</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+        
         body {
             display: flex;
-            justify-content: center; /* Center horizontally */
-            align-items: center;     /* Center vertically */
-            min-height: 100vh;      /* Ensure full viewport height */
-            margin: 0;             /* Remove default margins */
-            background-color: #f0f0f0; /* Light gray background (optional) */
-            font-family: sans-serif; /* Use a sans-serif font */
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
-        h1 {
-            font-size: 3em;         /* Make the text large */
-            color: #333;           /* Dark gray text color (optional) */
-            text-align: center; /* Center text within the h1 */
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2); /* Add a subtle text shadow */
-        }
-
-        #container{
+        /* ============================================================
+           RESULTS CONTAINER
+           ============================================================ */
+        #results-container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px; /* Add some padding around the content */
-            border: 1px solid #ccc; /* Optional: add a border */
-            border-radius: 8px; /* Optional: round the corners */
-            background-color: white; /* Optional: set a background color */
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            padding: 30px;
+            border-radius: 12px;
+            background-color: white;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            width: 100%;
         }
 
+        #results-container h1 {
+            font-size: 2.5em;
+            color: #333;
+            text-align: center;
+            margin: 0 0 10px 0;
+        }
+
+        #completion-code {
+            font-size: 1.3em;
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        #completion-code strong {
+            color: #2563eb;
+            font-family: monospace;
+            font-size: 1.2em;
+        }
+
+        .chart-container {
+            width: 100%;
+            margin: 15px 0;
+        }
+
+        /* ============================================================
+           MODAL OVERLAY
+           ============================================================ */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 999;
+        }
+
+        .overlay.hidden {
+            display: none;
+        }
+
+        /* ============================================================
+           SURVEY POPUP
+           ============================================================ */
         .popup {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             background: white;
-            padding: 20px;
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
+            padding: 25px 30px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+            border-radius: 12px;
+            z-index: 1000;
+            max-width: 90%;
+            width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .popup.wide {
+            width: 850px;
+        }
+
+        .popup.hidden {
+            display: none;
+        }
+
+        .popup h2 {
+            margin: 0 0 5px 0;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .popup .question-text {
+            margin: 0 0 20px 0;
+            color: #555;
+            line-height: 1.6;
+            font-size: 1em;
+        }
+
+        .popup .question-note {
+            font-size: 0.9em;
+            color: #777;
+            font-style: italic;
+            margin-top: 8px;
+        }
+
+        /* ============================================================
+           FORM ELEMENTS
+           ============================================================ */
+        .radio-group {
             display: flex;
             flex-direction: column;
+            gap: 12px;
+            margin: 15px 0;
+        }
+
+        .radio-option {
+            display: flex;
             align-items: center;
-            z-index: 1000;
-            max-width: 80%;
-            width: 500px;
-        }
-        
-        .popup select {
-            margin: 10px 0;
-            padding: 5px;
-            width: 100%;
-        }
-        
-        .popup button {
-            padding: 8px 15px;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
             cursor: pointer;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            margin-top: 10px;
+            transition: all 0.2s;
         }
-        
-        .popup button:hover {
-            background-color: #45a049;
+
+        .radio-option:hover {
+            border-color: #2563eb;
+            background-color: #f8fafc;
         }
-        
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
+
+        .radio-option.selected {
+            border-color: #2563eb;
+            background-color: #eff6ff;
+        }
+
+        .radio-option input[type="radio"] {
+            margin-right: 12px;
+            width: 18px;
+            height: 18px;
+        }
+
+        .radio-option label {
+            cursor: pointer;
+            flex: 1;
+        }
+
+        /* Confidence Slider */
+        .slider-container {
+            margin: 20px 0;
+        }
+
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .slider-value {
+            text-align: center;
+            font-size: 2em;
+            font-weight: bold;
+            color: #2563eb;
+            margin-bottom: 10px;
+        }
+
+        input[type="range"] {
             width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 999;
+            height: 8px;
+            border-radius: 4px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
         }
-        
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #2563eb;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Text Area */
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1em;
+            resize: vertical;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+
+        .word-counter {
+            text-align: right;
+            font-size: 0.85em;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .word-counter.error {
+            color: #dc2626;
+            font-weight: 500;
+        }
+
+        .optional-label {
+            font-size: 0.85em;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        /* ============================================================
+           IMAGE GRID (for perturbation type selection)
+           ============================================================ */
         .image-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
+            gap: 12px;
             margin: 20px 0;
-            width: 100%;
         }
-        
+
+        @media (max-width: 700px) {
+            .image-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
         .image-option {
-            border: 3px solid transparent;
+            border: 3px solid #e0e0e0;
+            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.3s;
-            border-radius: 6px;
+            transition: all 0.2s;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            height: 100%;
+            overflow: hidden;
+            background: #fafafa;
         }
-        
+
+        .image-option:hover {
+            border-color: #93c5fd;
+            transform: translateY(-2px);
+        }
+
         .image-option.selected {
-            border-color: #4CAF50;
-            box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+            background: #eff6ff;
         }
-        
-        .image-label {
-            margin: 0;
-            padding: 5px;
-            text-align: center;
-            font-size: 12px;
-            font-weight: bold;
-            height: 40px; /* Fixed height for all labels */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-        }
-        
+
         .image-option img {
             width: 100%;
+            aspect-ratio: 1;
             object-fit: contain;
-            display: block;
-            flex-grow: 1;
+            padding: 10px;
         }
-        
-        /* Make question 2 popup larger */
-        #question2 {
-            max-width: 90%;
-            width: 800px;
-        }
-        
-        .image-option.selected {
-            border-color: #4CAF50;
-            box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
-        }
-        
-        textarea {
-            width: 100%;
-            min-height: 120px;
-            margin: 10px 0;
+
+        .image-label {
             padding: 8px;
-            border-radius: 4px;
-            border: 1px solid #ccc;
-            resize: vertical;
-        }
-        
-        .word-counter {
-            text-align: right;
+            text-align: center;
             font-size: 0.8em;
-            color: #666;
-            margin-bottom: 10px;
+            font-weight: 600;
+            color: #444;
+            background: #f0f0f0;
+            border-top: 1px solid #e0e0e0;
         }
-        
-        .word-counter.error {
-            color: red;
+
+        .image-option.selected .image-label {
+            background: #dbeafe;
+            color: #1e40af;
         }
-        
-        .hidden {
-            display: none;
+
+        /* ============================================================
+           BUTTONS
+           ============================================================ */
+        .btn {
+            padding: 12px 28px;
+            font-size: 1em;
+            font-weight: 500;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 15px;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-primary:disabled {
+            background: #93c5fd;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            margin-right: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .button-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        /* ============================================================
+           PROGRESS INDICATOR
+           ============================================================ */
+        .progress-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .progress-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #e0e0e0;
+        }
+
+        .progress-dot.active {
+            background: #2563eb;
+        }
+
+        .progress-dot.completed {
+            background: #22c55e;
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
 </head>
 <body>
-    <div id="container">
+    <!-- ============================================================
+         RESULTS DISPLAY
+         ============================================================ -->
+    <div id="results-container">
         <h1>Thank You for Playing!</h1>
-        <h1 id = "yourCode"> Here's your Completion Code: CAJXCTTO</h1>
-        <canvas id="resultsChart" width="400" height="200"></canvas>
-        <canvas id="distanceChart" width="400" height="200"></canvas>
+        <p id="completion-code">Your Completion Code: <strong>CAJXCTTO</strong></p>
+        <div class="chart-container">
+            <canvas id="resultsChart" height="150"></canvas>
+        </div>
+        <div class="chart-container">
+            <canvas id="distanceChart" height="150"></canvas>
+        </div>
     </div>
+
+    <!-- ============================================================
+         SURVEY OVERLAY
+         ============================================================ -->
     <div class="overlay" id="overlay"></div>
-    <!-- Question 1 -->
+
+    <!-- ============================================================
+         QUESTION 1: Did you notice any change?
+         ============================================================ -->
     <div class="popup" id="question1">
-        <p>1) When your controls were changed, were you able to figure out which direction the black/green fly moved when you moved your hand in a certain direction?</p>
-        <select id="q1-answer">
-            <option value="" disabled selected>Select your answer</option>
-            <option value="Yes">Yes</option>
-            <option value="No">No</option>
-        </select>
-        <button onclick="submitQ1()">Submit</button>
-    </div>
-    
-    <!-- Question 1.2 (conditional) -->
-    <div class="popup hidden" id="question1-2">
-        <p>1.2) Please describe this relationship (At most 500 words)</p>
-        <textarea id="relationship-description" oninput="countWords(this)"></textarea>
-        <div class="word-counter" id="word-counter">0/500 words</div>
-        <button onclick="submitQ1_2()">Submit</button>
-    </div>
-    
-    <!-- Question 2 -->
-    <div class="popup hidden" id="question2">
-        <p>2) Which of these images best describes that relationship when your controls were changed?</p>
-        <div class="image-grid">
-            <div class="image-option" onclick="selectImage(0)">
-                <p class="image-label">30 Degrees Clockwise</p>
-                <img src="Motions/30DegC.png" alt="30 Degrees Clockwise">
+        <div class="progress-indicator">
+            <div class="progress-dot active"></div>
+            <div class="progress-dot"></div>
+            <div class="progress-dot"></div>
+            <div class="progress-dot"></div>
+        </div>
+        
+        <h2>Question 1 of 4</h2>
+        <p class="question-text">
+            During the experiment, your mouse/cursor control may or may not have been altered at some point.
+            <br><br>
+            <strong>Did you notice any change in how the cursor responded to your hand movements at any point during the experiment?</strong>
+        </p>
+        
+        <div class="radio-group" id="q1-options">
+            <div class="radio-option" onclick="selectRadio('q1', 'yes_clear')">
+                <input type="radio" name="q1" id="q1-yes-clear" value="yes_clear">
+                <label for="q1-yes-clear">Yes, I clearly noticed a change</label>
             </div>
-            <div class="image-option" onclick="selectImage(1)">
-                <p class="image-label">30 Degrees Counterclockwise</p>
-                <img src="Motions/30DegCC.png" alt="30 Degrees Counterclockwise">
+            <div class="radio-option" onclick="selectRadio('q1', 'yes_slight')">
+                <input type="radio" name="q1" id="q1-yes-slight" value="yes_slight">
+                <label for="q1-yes-slight">Yes, but it was subtle / I wasn't sure</label>
             </div>
-            <div class="image-option" onclick="selectImage(2)">
-                <p class="image-label">90 Degrees Clockwise</p>
-                <img src="Motions/90DegC.png" alt="90 Degrees Clockwise">
-            </div>
-            <div class="image-option" onclick="selectImage(3)">
-                <p class="image-label">90 Degrees Counterclockwise</p>
-                <img src="Motions/90DegCC.png" alt="90 Degrees Counterclockwise">
-            </div>
-            <div class="image-option" onclick="selectImage(4)">
-                <p class="image-label">Reflection Across The Diagonal</p>
-                <img src="Motions/DiagRef.png" alt="Reflection Across The Diagonal">
-            </div>
-            <div class="image-option" onclick="selectImage(5)">
-                <p class="image-label">Reflection Across The Horizontal</p>
-                <img src="Motions/XRef.png" alt="Reflection Across The Horizontal">
-            </div>
-            <div class="image-option" onclick="selectImage(6)">
-                <p class="image-label">Reflection Across The Vertical</p>
-                <img src="Motions/YRef.png" alt="Reflection Across The Vertical">
-            </div>
-            <div class="image-option" onclick="selectImage(7)">
-                <p class="image-label">No Change</p>
-                <img src="Motions/NoChange.png" alt="No Change">
+            <div class="radio-option" onclick="selectRadio('q1', 'no')">
+                <input type="radio" name="q1" id="q1-no" value="no">
+                <label for="q1-no">No, I didn't notice any change</label>
             </div>
         </div>
-        <button onclick="submitQ2()">Submit</button>
+        
+        <div class="button-row">
+            <button class="btn btn-primary" onclick="submitQ1()">Next</button>
+        </div>
     </div>
-    <script type="module">
-        import { signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        import { doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';; 
-        import { initializeFirebase } from './firebaseConfig.js';
-        
-        let do_upload = true;
-        const { db, auth } = initializeFirebase();
-        let prolificId = localStorage.getItem('prolificId')
-        console.log(prolificId);
 
-        const dt = 50 //ms
-
-        // Make functions globally accessible
-        window.selectedImageIndex = -1;
+    <!-- ============================================================
+         QUESTION 2: What type of change?
+         ============================================================ -->
+    <div class="popup wide hidden" id="question2">
+        <div class="progress-indicator">
+            <div class="progress-dot completed"></div>
+            <div class="progress-dot active"></div>
+            <div class="progress-dot"></div>
+            <div class="progress-dot"></div>
+        </div>
         
-        window.countWords = function(textarea) {
-            const text = textarea.value;
-            const wordCount = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
-            const wordCounter = document.getElementById('word-counter');
-            
-            wordCounter.textContent = `${wordCount}/500 words`;
-            
-            if (wordCount > 500) {
-                wordCounter.classList.add('error');
-            } else {
-                wordCounter.classList.remove('error');
+        <h2>Question 2 of 4</h2>
+        <p class="question-text">
+            <strong>Which of the following best describes how the cursor movement changed?</strong>
+            <br><br>
+            Each image below shows: if you moved your hand in the direction of the <strong>solid arrow</strong>, 
+            the cursor would move in the direction of the <strong>dashed arrow</strong>.
+        </p>
+        
+        <div class="image-grid" id="q2-images">
+            <div class="image-option" onclick="selectImage(0)">
+                <img src="Motions/30DegC.png" alt="30° Clockwise Rotation">
+                <div class="image-label">30° Clockwise Rotation</div>
+            </div>
+            <div class="image-option" onclick="selectImage(1)">
+                <img src="Motions/30DegCC.png" alt="30° Counter-Clockwise Rotation">
+                <div class="image-label">30° Counter-Clockwise</div>
+            </div>
+            <div class="image-option" onclick="selectImage(2)">
+                <img src="Motions/90DegC.png" alt="90° Clockwise Rotation">
+                <div class="image-label">90° Clockwise Rotation</div>
+            </div>
+            <div class="image-option" onclick="selectImage(3)">
+                <img src="Motions/90DegCC.png" alt="90° Counter-Clockwise Rotation">
+                <div class="image-label">90° Counter-Clockwise</div>
+            </div>
+            <div class="image-option" onclick="selectImage(4)">
+                <img src="Motions/DiagRef.png" alt="Diagonal Reflection">
+                <div class="image-label">Diagonal Reflection</div>
+            </div>
+            <div class="image-option" onclick="selectImage(5)">
+                <img src="Motions/XRef.png" alt="Horizontal Reflection">
+                <div class="image-label">Horizontal Reflection</div>
+            </div>
+            <div class="image-option" onclick="selectImage(6)">
+                <img src="Motions/YRef.png" alt="Vertical Reflection">
+                <div class="image-label">Vertical Reflection</div>
+            </div>
+            <div class="image-option" onclick="selectImage(7)">
+                <img src="Motions/NoChange.png" alt="No Change">
+                <div class="image-label">No Change / Not Sure</div>
+            </div>
+        </div>
+        
+        <div class="button-row">
+            <button class="btn btn-secondary" onclick="goBack('question1', 'question2')">Back</button>
+            <button class="btn btn-primary" onclick="submitQ2()">Next</button>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         QUESTION 3: Confidence Rating
+         ============================================================ -->
+    <div class="popup hidden" id="question3">
+        <div class="progress-indicator">
+            <div class="progress-dot completed"></div>
+            <div class="progress-dot completed"></div>
+            <div class="progress-dot active"></div>
+            <div class="progress-dot"></div>
+        </div>
+        
+        <h2>Question 3 of 4</h2>
+        <p class="question-text">
+            <strong>How confident are you in your answer to the previous question?</strong>
+            <br>
+            <span class="question-note">1 = Just guessing, 10 = Completely certain</span>
+        </p>
+        
+        <div class="slider-container">
+            <div class="slider-value" id="confidence-value">5</div>
+            <input type="range" id="confidence-slider" min="1" max="10" value="5" 
+                   oninput="updateConfidenceDisplay(this.value)">
+            <div class="slider-labels">
+                <span>1 - Guessing</span>
+                <span>10 - Certain</span>
+            </div>
+        </div>
+        
+        <div class="button-row">
+            <button class="btn btn-secondary" onclick="goBack('question2', 'question3')">Back</button>
+            <button class="btn btn-primary" onclick="submitQ3()">Next</button>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         QUESTION 4: Optional Description
+         ============================================================ -->
+    <div class="popup hidden" id="question4">
+        <div class="progress-indicator">
+            <div class="progress-dot completed"></div>
+            <div class="progress-dot completed"></div>
+            <div class="progress-dot completed"></div>
+            <div class="progress-dot active"></div>
+        </div>
+        
+        <h2>Question 4 of 4</h2>
+        <p class="question-text">
+            <strong>Is there anything else you'd like to share about your experience?</strong>
+            <br>
+            <span class="question-note">
+                For example: Did the change happen suddenly or gradually? 
+                Did you try any strategies to adapt? Any other observations?
+            </span>
+        </p>
+        
+        <p class="optional-label">Optional (max 300 words)</p>
+        <textarea id="additional-comments" 
+                  placeholder="Share any additional thoughts or observations..."
+                  oninput="countWords(this)"></textarea>
+        <div class="word-counter" id="word-counter">0 / 300 words</div>
+        
+        <div class="button-row">
+            <button class="btn btn-secondary" onclick="goBack('question3', 'question4')">Back</button>
+            <button class="btn btn-primary" onclick="submitQ4()">Submit</button>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         JAVASCRIPT - UI Functions (regular script, loads synchronously)
+         ============================================================ -->
+    <script>
+        // ============================================================
+        // CONFIGURATION
+        // ============================================================
+        const CONFIG = {
+            upload: {
+                enabled: true
+            },
+            firebase: {
+                experimentCollection: "experiments_v2",
+                surveyDocument: "survey_responses"
+            },
+            survey: {
+                maxWords: 300
+            },
+            charts: {
+                samplingInterval: 50  // ms between data points
             }
-            
-            return wordCount;
         };
+
+        // ============================================================
+        // SURVEY STATE
+        // ============================================================
+        const surveyState = {
+            q1_noticed_change: null,      // 'yes_clear', 'yes_slight', 'no'
+            q2_perturbation_type: null,   // 0-7 (image index)
+            q3_confidence: 5,             // 1-10
+            q4_additional_comments: ''    // free text
+        };
+
+        let selectedImageIndex = -1;
         
-        window.selectImage = function(index) {
-            // Remove 'selected' class from all images
+        // Will be set by the module script after Firebase loads
+        let firebaseRefs = {
+            db: null,
+            auth: null,
+            signOut: null,
+            doc: null,
+            setDoc: null,
+            Timestamp: null,
+            collection: null
+        };
+        const prolificId = localStorage.getItem('prolificId') || 'anonymous';
+
+        // ============================================================
+        // UI HELPER FUNCTIONS
+        // ============================================================
+        function selectRadio(questionId, value) {
+            // Update visual state
+            document.querySelectorAll(`#${questionId}-options .radio-option`).forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+            
+            // Update radio button
+            const radio = event.currentTarget.querySelector('input[type="radio"]');
+            radio.checked = true;
+            
+            // Store value
+            if (questionId === 'q1') {
+                surveyState.q1_noticed_change = value;
+            }
+        }
+
+        function selectImage(index) {
             document.querySelectorAll('.image-option').forEach(img => {
                 img.classList.remove('selected');
             });
-            
-            // Add 'selected' class to clicked image
             document.querySelectorAll('.image-option')[index].classList.add('selected');
-            window.selectedImageIndex = index;
-        };
-        
-        window.submitQ1 = function() {
-            const q1Answer = document.getElementById('q1-answer').value;
+            selectedImageIndex = index;
+            surveyState.q2_perturbation_type = index;
+        }
+
+        function updateConfidenceDisplay(value) {
+            document.getElementById('confidence-value').textContent = value;
+            surveyState.q3_confidence = parseInt(value);
+        }
+
+        function countWords(textarea) {
+            const text = textarea.value.trim();
+            const wordCount = text === '' ? 0 : text.split(/\s+/).length;
+            const counter = document.getElementById('word-counter');
             
-            if (!q1Answer) {
-                alert("Please select an answer before submitting.");
+            counter.textContent = `${wordCount} / ${CONFIG.survey.maxWords} words`;
+            counter.classList.toggle('error', wordCount > CONFIG.survey.maxWords);
+            
+            return wordCount;
+        }
+
+        function goBack(showId, hideId) {
+            document.getElementById(hideId).classList.add('hidden');
+            document.getElementById(showId).classList.remove('hidden');
+        }
+
+        function showPopup(id) {
+            document.querySelectorAll('.popup').forEach(p => p.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        // ============================================================
+        // QUESTION SUBMISSION HANDLERS
+        // ============================================================
+        function submitQ1() {
+            if (!surveyState.q1_noticed_change) {
+                alert('Please select an answer before continuing.');
                 return;
             }
             
-            // Hide question 1
-            document.getElementById('question1').classList.add('hidden');
-            
-            // Store answer
-            window.surveyAnswers = {
-                q1: q1Answer,
-                q1_2: "",
-                q2: -1
-            };
-            
-            // If 'Yes', show question 1.2, else skip to question 2
-            if (q1Answer === "Yes") {
-                document.getElementById('question1-2').classList.remove('hidden');
+            // If they didn't notice any change, skip to confidence question
+            // but pre-select "No Change" for Q2
+            if (surveyState.q1_noticed_change === 'no') {
+                surveyState.q2_perturbation_type = 7; // "No Change / Not Sure"
+                selectedImageIndex = 7;
+                showPopup('question3');
             } else {
-                document.getElementById('question2').classList.remove('hidden');
+                showPopup('question2');
             }
-        };
-        
-        window.submitQ1_2 = function() {
-            const descriptionText = document.getElementById('relationship-description').value.trim();
-            const wordCount = countWords(document.getElementById('relationship-description'));
+        }
+
+        function submitQ2() {
+            if (selectedImageIndex === -1) {
+                alert('Please select an option before continuing.');
+                return;
+            }
+            showPopup('question3');
+        }
+
+        function submitQ3() {
+            showPopup('question4');
+        }
+
+        async function submitQ4() {
+            const comments = document.getElementById('additional-comments').value.trim();
+            const wordCount = countWords(document.getElementById('additional-comments'));
             
-            if (descriptionText === "") {
-                alert("Please enter a description before submitting.");
+            if (wordCount > CONFIG.survey.maxWords) {
+                alert(`Please reduce your response to ${CONFIG.survey.maxWords} words or fewer.`);
                 return;
             }
             
-            if (wordCount > 500) {
-                alert("Your description exceeds 500 words. Please reduce the length before submitting.");
-                return;
-            }
+            surveyState.q4_additional_comments = comments;
             
-            // Store answer
-            window.surveyAnswers.q1_2 = descriptionText;
-            
-            // Hide question 1.2
-            document.getElementById('question1-2').classList.add('hidden');
-            
-            // Show question 2
-            document.getElementById('question2').classList.remove('hidden');
-        };
-        
-        window.submitQ2 = function() {
-            if (window.selectedImageIndex === -1) {
-                alert("Please select an image before submitting.");
-                return;
-            }
-            
-            // Store answer
-            window.surveyAnswers.q2 = window.selectedImageIndex;
-            
-            // Hide question 2 and overlay
-            document.getElementById('question2').classList.add('hidden');
+            // Hide survey
+            document.getElementById('question4').classList.add('hidden');
             document.getElementById('overlay').classList.add('hidden');
             
-            // Upload answers if needed
-            if (do_upload && auth.currentUser) {
-                const collectionPath = prolificId + "_" + auth.currentUser.uid
-                const docRef = doc(db, collectionPath, "game_inputs");
-                updateDoc(docRef, {
-                    surveyAnswers: window.surveyAnswers
-                })
-                .then(() => {
-                    console.log("Survey answers successfully uploaded!");
-                })
-                .catch((error) => {
-                    console.error("Error uploading survey answers: ", error);
+            // Upload to Firebase
+            await uploadSurveyResponses();
+        }
+
+        // ============================================================
+        // FIREBASE UPLOAD
+        // ============================================================
+        async function uploadSurveyResponses() {
+            const { db, auth, doc, setDoc, Timestamp, collection } = firebaseRefs;
+            
+            if (!CONFIG.upload.enabled || !auth || !auth.currentUser) {
+                console.log('Upload disabled or user not authenticated');
+                return;
+            }
+            
+            try {
+                const { experimentCollection, surveyDocument } = CONFIG.firebase;
+                const oderId = `${prolificId}_${auth.currentUser.uid}`;
+                
+                // Reference: experiments_v2 / oderId / survey / survey_responses
+                const surveyCollectionRef = collection(db, experimentCollection, oderId, 'survey');
+                const surveyDocRef = doc(surveyCollectionRef, surveyDocument);
+                
+                await setDoc(surveyDocRef, {
+                    ...surveyState,
+                    submittedAt: Timestamp.fromDate(new Date()),
+                    perturbationTypeLabel: getPerturbationLabel(surveyState.q2_perturbation_type)
                 });
+                
+                console.log('Survey responses uploaded successfully!');
+            } catch (error) {
+                console.error('Error uploading survey responses:', error);
             }
-        };
-        
-        // Initialize on window load
-        window.onload = function() {
-            // Start with question 1 visible
-            document.getElementById('question1').classList.remove('hidden');
-        };
-        
+        }
 
-        document.addEventListener('click', async (event) => {
-            if (event.target.tagName === 'BUTTON' || event.target.closest('button')) {
-                return; // Allow normal button click behavior without exit confirmation
-            }
+        function getPerturbationLabel(index) {
+            const labels = [
+                '30° Clockwise Rotation',
+                '30° Counter-Clockwise Rotation',
+                '90° Clockwise Rotation',
+                '90° Counter-Clockwise Rotation',
+                'Diagonal Reflection',
+                'Horizontal Reflection',
+                'Vertical Reflection',
+                'No Change / Not Sure'
+            ];
+            return labels[index] || 'Unknown';
+        }
+
+        // ============================================================
+        // CHART RENDERING
+        // ============================================================
+        function renderCharts() {
+            const sectionSizes = JSON.parse(localStorage.getItem('sectionSizes') || '[]');
+            const percentages = JSON.parse(localStorage.getItem('percentages') || '[]');
+            const distances = JSON.parse(localStorage.getItem('distances') || '[]');
+            const gameConfig = JSON.parse(localStorage.getItem('game_config') || '{}');
+            const highlights = JSON.parse(localStorage.getItem('highlights') || '[]');
             
-            const currentPopup = document.querySelector('.popup:not(.hidden)');
-            if (!currentPopup || currentPopup.contains(event.target)) {
-                return; // Ignore clicks inside the popup
-            }
-            
-            event.preventDefault();
-            const userConfirmed = confirm("Are you sure you want to exit?");
-            if (userConfirmed) {
-                try {
-                    // Use the existing auth from the module if available
-                    if (typeof auth !== 'undefined' && auth) {
-                        await signOut(auth);
-                    }
-                    window.location.href = 'index.html';
-                } catch (error) {
-                    console.error("Error signing out:", error);
-                    // Still redirect even if sign out fails
-                    window.location.href = 'index.html';
-                }
-            }
-        });
+            const dt = CONFIG.charts.samplingInterval;
 
-        // Parse the sectionSizes, percentages, and distances from localStorage
-        const sectionSizes = JSON.parse(localStorage.getItem('sectionSizes'));
-        const percentages = JSON.parse(localStorage.getItem('percentages'));
-        const distances = JSON.parse(localStorage.getItem('distances'));
-        const game_timelegths = JSON.parse(localStorage.getItem('game_timelegths'));
-        const highlights = JSON.parse(localStorage.getItem('highlights'));
-
-        let control = game_timelegths["normal"]/dt;
-        let game = control + game_timelegths["reverse"]/dt;
-        let post = control + game;
-        console.log(control);
-        console.log(game);
-        console.log(post);
-        console.log(highlights)
-
-
-        // Render the bar chart
-        const ctxBar = document.getElementById('resultsChart').getContext('2d');
-        new Chart(ctxBar, {
-            type: 'bar',
-            data: {
-                labels: sectionSizes,
-                datasets: [{
-                    label: 'Percentages',
-                    data: percentages,
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-
-                            text: ['Intervals of Distance to the Green Dot (px)',
-                                   'For reference, the dots have a diameter of 20px']
-                        }
+            // Bar Chart - Distance Distribution
+            if (sectionSizes.length && percentages.length) {
+                const ctxBar = document.getElementById('resultsChart').getContext('2d');
+                new Chart(ctxBar, {
+                    type: 'bar',
+                    data: {
+                        labels: sectionSizes.map(s => `< ${s}px`),
+                        datasets: [{
+                            label: 'Time in Distance Range (%)',
+                            data: percentages,
+                            backgroundColor: 'rgba(37, 99, 235, 0.6)',
+                            borderColor: 'rgba(37, 99, 235, 1)',
+                            borderWidth: 1
+                        }]
                     },
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Percentage of time in this interval (%)'
-                        }
-                    }
-                }
-            }
-        });
-
-        // Render the line chart
-        const ctxLine = document.getElementById('distanceChart').getContext('2d');
-        new Chart(ctxLine, {
-            type: 'line',
-            data: {
-                labels: distances.map((_, index) => index + 1), // Use the index as the label
-                datasets: [{
-                    label: 'Distances Over Time',
-                    data: distances,
-                    backgroundColor: 'rgba(153, 102, 255, 0.2)',
-                    borderColor: 'rgba(153, 102, 255, 1)',
-                    borderWidth: 1,
-                    fill: false
-                }]
-            },
-            options: {
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Time (~' + dt + ' ms) (Red is normal tracking, Blue is reverse)'
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Distance'
-                        }
-                    }
-                },
-                plugins: {
-                    annotation: {
-                        annotations: {
-                            highlightRegion1: {
-                                type: 'box',
-                                xMin: 0,  
-                                xMax: highlights[0], 
-                                yMin: 0,  
-                                yMax: 'max', 
-                                backgroundColor: 'rgba(255, 0, 0, 0.2)', 
-                                borderWidth: 0
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false },
+                            title: {
+                                display: true,
+                                text: 'How Close Were You to the Fly?'
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Distance to Fly (pixels)'
+                                }
                             },
-                            highlightRegion2: {
-                                type: 'box',
-                                xMin: highlights[0],  
-                                xMax: highlights[1], 
-                                yMin: 0,  
-                                yMax: 'max', 
-                                backgroundColor: 'rgba(0, 0, 255, 0.2)', 
-                                borderWidth: 0
-                            },
-                            highlightRegion3: {
-                                type: 'box',
-                                xMin: highlights[1],  
-                                xMax: highlights[2], 
-                                yMin: 0,  
-                                yMax: 'max', 
-                                backgroundColor: 'rgba(255, 0, 0, 0.2)', 
-                                borderWidth: 0
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Percentage of Time (%)'
+                                }
                             }
                         }
                     }
+                });
+            }
+
+            // Line Chart - Distance Over Time
+            if (distances.length) {
+                const ctxLine = document.getElementById('distanceChart').getContext('2d');
+                
+                // Build phase annotations
+                const annotations = {};
+                const phaseColors = [
+                    'rgba(34, 197, 94, 0.15)',   // Baseline - green
+                    'rgba(251, 146, 60, 0.15)',  // Ramp - orange
+                    'rgba(239, 68, 68, 0.15)',   // Hold - red
+                    'rgba(34, 197, 94, 0.15)'    // Aftereffect - green
+                ];
+                const phaseLabels = ['Baseline', 'Ramp Up', 'Hold', 'Aftereffect'];
+                
+                let prevEnd = 0;
+                highlights.forEach((end, i) => {
+                    if (end > prevEnd) {
+                        annotations[`phase${i}`] = {
+                            type: 'box',
+                            xMin: prevEnd,
+                            xMax: end,
+                            yMin: 0,
+                            yMax: 'max',
+                            backgroundColor: phaseColors[i] || 'rgba(0,0,0,0.1)',
+                            borderWidth: 0,
+                            label: {
+                                display: true,
+                                content: phaseLabels[i] || `Phase ${i + 1}`,
+                                position: 'start'
+                            }
+                        };
+                    }
+                    prevEnd = end;
+                });
+                
+                new Chart(ctxLine, {
+                    type: 'line',
+                    data: {
+                        labels: distances.map((_, i) => i + 1),
+                        datasets: [{
+                            label: 'Distance to Fly',
+                            data: distances,
+                            borderColor: 'rgba(99, 102, 241, 0.8)',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            borderWidth: 1,
+                            fill: true,
+                            pointRadius: 0,
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false },
+                            title: {
+                                display: true,
+                                text: 'Your Performance Over Time'
+                            },
+                            annotation: { annotations }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: `Time (samples at ~${dt}ms intervals)`
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Distance (pixels)'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // ============================================================
+        // INITIALIZATION (called after DOM loads)
+        // ============================================================
+        function initializePage() {
+            renderCharts();
+            // Show first question
+            document.getElementById('question1').classList.remove('hidden');
+        }
+    </script>
+
+    <!-- ============================================================
+         JAVASCRIPT - Firebase Module (loads asynchronously)
+         ============================================================ -->
+    <script type="module">
+        import { signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { doc, setDoc, Timestamp, collection } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { initializeFirebase } from './firebaseConfig.js';
+        
+        // Initialize Firebase and store references globally
+        const { db, auth } = initializeFirebase();
+        
+        firebaseRefs.db = db;
+        firebaseRefs.auth = auth;
+        firebaseRefs.signOut = signOut;
+        firebaseRefs.doc = doc;
+        firebaseRefs.setDoc = setDoc;
+        firebaseRefs.Timestamp = Timestamp;
+        firebaseRefs.collection = collection;
+
+        // ============================================================
+        // EXIT CONFIRMATION
+        // ============================================================
+        document.addEventListener('click', async (event) => {
+            // Allow button clicks
+            if (event.target.tagName === 'BUTTON' || event.target.closest('button')) {
+                return;
+            }
+            
+            // Allow clicks inside popups
+            const currentPopup = document.querySelector('.popup:not(.hidden)');
+            if (!currentPopup || currentPopup.contains(event.target)) {
+                return;
+            }
+            
+            event.preventDefault();
+            if (confirm('Are you sure you want to exit? Your survey responses will not be saved.')) {
+                try {
+                    if (auth) await signOut(auth);
+                } catch (error) {
+                    console.error('Error signing out:', error);
                 }
+                window.location.href = 'index.html';
             }
         });
+
+        // ============================================================
+        // INITIALIZE PAGE WHEN DOM IS READY
+        // ============================================================
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializePage);
+        } else {
+            initializePage();
+        }
     </script>
 </body>
 </html>
