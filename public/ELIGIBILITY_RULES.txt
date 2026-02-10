@@ -4,37 +4,40 @@
 //
 // A participant is ELIGIBLE if:
 //   1. They are 18 years or older
-//   2. They answer ALL of the following 5 critical questions with the SAME hand:
-//      - Using a computer trackpad
-//      - Writing
-//      - Drawing
-//      - Throwing
-//      - Using a knife (without a fork)
+//   2. They answer ALL of the critical questions with the SAME hand:
 //   3. That dominant hand matches CONFIG.handedness.recruitingFor:
-//      - If recruitingFor = 'right': must answer all 5 with "Right"
-//      - If recruitingFor = 'left': must answer all 5 with "Left"
-//      - If recruitingFor = 'both': can be either, as long as all 5 match
+//      - If recruitingFor = 'right': must answer all critical questions with "Right"
+//      - If recruitingFor = 'left': must answer all critical questions with "Left"
 //
 // A participant is REJECTED if:
-//   - They answer any of the 5 critical questions with a different hand
+//   - They answer any of the critical questions with a different hand
 //     (classified as "mixed handedness")
 //   - They are consistently left-handed but we're recruiting right-handers
 //   - They are consistently right-handed but we're recruiting left-handers
 //
-// The other 11 handedness questions are recorded but do NOT affect eligibility:
-//   - Using scissors
-//   - Using a toothbrush
-//   - Using a spoon
-//   - Using a broom (upper hand)
-//   - Striking a match
-//   - Opening a box (holding the lid)
-//   - Holding a computer mouse
-//   - Using a key to unlock a door
-//   - Holding a hammer
-//   - Holding a brush or comb
-//   - Holding a cup while drinking
+// These are the questions followed by whether they are critical for the Left/Right handed group:
+//  - Using a computer trackpad (L & R)
+//  - Writing (L & R)
+//  - Drawing (L & R)
+//  - Throwing (L & R)
+//  - Using a knife (without a fork) (L & R)
+//   - Using scissors (R)
+//   - Using a toothbrush (R)
+//   - Using a spoon (R)
+//   - Using a broom (upper hand) (R)
+//   - Striking a match (R)
+//   - Opening a box (holding the lid) (R)
+//   - Holding a computer mouse (R)
+//   - Using a key to unlock a door (R)
+//   - Holding a hammer (R)
+//   - Holding a brush or comb (R)
+//   - Holding a cup while drinking (R)
+//
+// Note there are 5 critical questions for left handed group and 16 for right handed.
 //
 // To change recruitment mode, edit this single line in CONFIG:
 //   recruitingFor: 'right'  // Options: 'right', 'left', 'both'
+//                           // 'both' allows both groups, but limits the critical questions
+//                           // to the same as the left group.
 //
 // ============================================================

@@ -564,14 +564,16 @@
                 // Change this single value to switch recruitment mode
                 recruitingFor: 'right',
                 
-                // Critical questions that determine eligibility
-                // Participant must answer ALL of these with the same hand
-                criticalQuestions: [
-                    'trackpad',   // Using a computer trackpad
-                    'writing',    // Writing
-                    'drawing',    // Drawing
-                    'throwing',   // Throwing
-                    'knife'       // Using a knife (without fork)
+                // For LEFT-HANDED recruitment: 5 critical questions (subset)
+                criticalQuestionsLeft: [
+                    'trackpad', 'writing', 'drawing', 'throwing', 'knife'
+                ],
+                
+                // For RIGHT-HANDED recruitment: ALL 16 questions (stricter)
+                criticalQuestionsRight: [
+                    'writing', 'drawing', 'throwing', 'scissors', 'toothbrush',
+                    'knife', 'spoon', 'broom', 'match', 'box', 'mouse', 'trackpad',
+                    'key', 'hammer', 'brush', 'cup'
                 ]
             },
             
@@ -755,7 +757,18 @@
         }
 
         function determineEligibility() {
-            const { criticalQuestions, recruitingFor } = CONFIG.handedness;
+            const { recruitingFor, criticalQuestionsLeft, criticalQuestionsRight } = CONFIG.handedness;
+            
+            // Select which critical questions to use based on recruitment mode
+            let criticalQuestions;
+            if (recruitingFor === 'left') {
+                criticalQuestions = criticalQuestionsLeft;
+            } else if (recruitingFor === 'right') {
+                criticalQuestions = criticalQuestionsRight;
+            } else {
+                // 'both' mode - use the smaller subset
+                criticalQuestions = criticalQuestionsLeft;
+            }
             
             // Get answers for critical questions
             const criticalAnswers = criticalQuestions.map(q => state.handedness[q]);
