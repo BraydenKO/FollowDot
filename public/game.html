@@ -405,7 +405,7 @@
         }
 
         // ============================================================
-        // FULLSCREEN & CURSOR
+        // FULLSCREEN & CURSOR & POINTER LOCK
         // ============================================================
         function goFullscreen() {
             const docEl = document.documentElement;
@@ -422,10 +422,25 @@
 
         function showCursor() {
             document.body.style.cursor = 'auto';
+            // Exit pointer lock when showing cursor (for modals)
+            if (document.pointerLockElement) {
+                document.exitPointerLock();
+            }
         }
 
         function hideCursor() {
             document.body.style.cursor = 'none';
+        }
+        
+        function requestPointerLock() {
+            // Request pointer lock for consistent mouse tracking
+            const body = document.body;
+            body.requestPointerLock = body.requestPointerLock || 
+                                      body.mozRequestPointerLock || 
+                                      body.webkitRequestPointerLock;
+            if (body.requestPointerLock) {
+                body.requestPointerLock();
+            }
         }
 
         // ============================================================
@@ -436,10 +451,18 @@
         }
         
         const mouseHandlers = {
+            // Normal mode: use movement deltas (works with pointer lock)
             normal(e) {
                 const { width, height } = state.screen;
-                state.user.x = Math.max(0, Math.min(width, e.clientX));
-                state.user.y = Math.max(0, Math.min(height, e.clientY));
+                
+                // Use movementX/Y for consistent behavior with pointer lock
+                state.user.x += e.movementX;
+                state.user.y += e.movementY;
+                
+                // Clamp to screen bounds
+                state.user.x = Math.max(0, Math.min(width, state.user.x));
+                state.user.y = Math.max(0, Math.min(height, state.user.y));
+                
                 updateUserDotPosition();
             },
             
@@ -450,8 +473,13 @@
                 const rotatedDeltaX = e.movementX * Math.cos(radians) - e.movementY * Math.sin(radians);
                 const rotatedDeltaY = e.movementX * Math.sin(radians) + e.movementY * Math.cos(radians);
                 
-                state.user.x = Math.max(0, Math.min(width, state.user.x + rotatedDeltaX));
-                state.user.y = Math.max(0, Math.min(height, state.user.y + rotatedDeltaY));
+                state.user.x += rotatedDeltaX;
+                state.user.y += rotatedDeltaY;
+                
+                // Clamp to screen bounds
+                state.user.x = Math.max(0, Math.min(width, state.user.x));
+                state.user.y = Math.max(0, Math.min(height, state.user.y));
+                
                 updateUserDotPosition();
             }
         };
@@ -761,15 +789,20 @@
         }
 
         function pauseGame(hideUser = true) {
-            // Center user position
+            cancelAnimationFrame(state.animationFrame);
+            
+            // Reset user position to center of screen
             state.user.x = state.screen.width / 2;
             state.user.y = state.screen.height / 2;
             updateUserDotPosition();
             
-            cancelAnimationFrame(state.animationFrame);
-            
             if (hideUser) {
                 elements.userDot.style.visibility = 'hidden';
+            }
+            
+            // Exit pointer lock when pausing
+            if (document.pointerLockElement) {
+                document.exitPointerLock();
             }
         }
 
@@ -778,6 +811,9 @@
             setMouseHandler(state.currentRotationDegrees > 0);
             
             elements.userDot.style.visibility = 'visible';
+            
+            // Request pointer lock for consistent mouse tracking
+            requestPointerLock();
             
             if (generateNewPhi) {
                 const phi = generatePhi();
@@ -851,13 +887,19 @@
                 state.phis.push(phi);
                 placeFlyAtStart();
                 
-                // Show user dot so they can position themselves during countdown
+                // Reset user position to center before each trial
+                state.user.x = state.screen.width / 2;
+                state.user.y = state.screen.height / 2;
+                updateUserDotPosition();
+                
+                // Show user dot so they can see their starting position during countdown
                 elements.userDot.style.visibility = 'visible';
                 
                 // Countdown before trial
                 await showCountdown(CONFIG.countdown.duration);
                 
-                // Start recording and run trial
+                // Request pointer lock and start recording
+                requestPointerLock();
                 startRecording();
                 resumeGame(false); // Don't generate new phi, we already did
                 await runSingleTrial();
