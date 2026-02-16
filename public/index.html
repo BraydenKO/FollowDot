@@ -589,6 +589,8 @@
 
                 // Keep ALL CAPS
                 hand_to_use : 'RIGHT',
+
+                direction: 'CW' // Direction of rotation in game
             },
             
             // ----------------------------------------------------------
@@ -964,6 +966,11 @@
                     demographics: state.demographics,
                     handednessResponses: state.handedness,
                     eligibility: state.eligibility,
+                    experimentCondition: {
+                        assignedHand: CONFIG.handedness.hand_to_use, // 'RIGHT' or 'LEFT'
+                        recruitmentTarget: CONFIG.handedness.recruitingFor, // 'right', 'left', or 'both'
+                        rotation_direction: CONFIG.handedness.direction // 'CW' or 'CCW'
+                    },
                     createdAt: Timestamp.fromDate(new Date())
                 }, { merge: true });
                 
