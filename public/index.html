@@ -87,6 +87,12 @@
             font-weight: 600;
         }
 
+        .highlight-blue {
+            color: #2563eb;
+            font-weight: 600;
+            text-transform: uppercase; /* Ensures it looks important */
+        }
+
         /* ============================================================
            FORM ELEMENTS
            ============================================================ */
@@ -458,6 +464,11 @@
         </div>
         
         <div class="blurb">
+            Please use your <span id="instruction-hand" class="highlight-blue"></span> hand 
+            to control the mouse.
+        </div>
+
+        <div class="blurb">
             You will control the fly's <span class="highlight-green">shadow</span>. 
             Your goal is to follow the moving <span class="highlight-purple">fly</span> as closely as possible.
         </div>
@@ -574,7 +585,10 @@
                     'writing', 'drawing', 'throwing', 'scissors', 'toothbrush',
                     'knife', 'spoon', 'broom', 'match', 'box', 'mouse', 'trackpad',
                     'key', 'hammer', 'brush', 'cup'
-                ]
+                ],
+
+                // Keep ALL CAPS
+                hand_to_use : 'RIGHT',
             },
             
             // ----------------------------------------------------------
@@ -912,6 +926,8 @@
             // Consent -> Instructions
             elements.btnStartGame.addEventListener('click', () => {
                 if (validateConsent()) {
+                    const handSpan = document.getElementById('instruction-hand');
+                    handSpan.textContent = CONFIG.handedness.hand_to_use;
                     showStep(elements.stepInstructions);
                 }
             });
@@ -919,6 +935,7 @@
             // Instructions -> Game
             elements.btnBegin.addEventListener('click', () => {
                 localStorage.setItem('prolificId', state.demographics.prolificId);
+                localStorage.setItem('hand_to_use', CONFIG.handedness.hand_to_use);
                 sessionStorage.setItem('gameStarted', 'true');
                 localStorage.setItem('fullscreenIntent', 'true');
                 window.location.href = CONFIG.navigation.gamePage;

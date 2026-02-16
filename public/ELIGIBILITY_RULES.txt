@@ -41,3 +41,8 @@
 //                           // to the same as the left group.
 //
 // ============================================================
+//
+// Note for self: When updating recruitment, adjust index.html
+// When updating which hand to use (not handedness) adjust index.html
+// When updating rotation direction adjust game.html
+// (TODO -> Make all these adjustsments only in one master config file)

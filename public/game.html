@@ -160,6 +160,14 @@
         // CONFIGURATION - Easy to modify game parameters
         // ============================================================
         const CONFIG = {
+            // PERTURBATION SETTINGS
+            // ----------------------------------------------------------
+            perturbation: {
+                // Rotation ramp: starts at 0, increases by 1 degree per ramp trial
+                degreesPerTrial: 1,      // Degrees added per ramp trial
+                maxDegrees: 30,          // Maximum rotation (held during hold phase)
+            },
+
             // ----------------------------------------------------------
             // TRIAL COUNTS - How many trials of each type
             // ----------------------------------------------------------
@@ -177,14 +185,6 @@
                 trialLength: 30000   // 30 seconds per trial
             },
             
-            // ----------------------------------------------------------
-            // PERTURBATION SETTINGS
-            // ----------------------------------------------------------
-            perturbation: {
-                // Rotation ramp: starts at 0, increases by 1 degree per ramp trial
-                degreesPerTrial: 1,      // Degrees added per ramp trial
-                maxDegrees: 30,          // Maximum rotation (held during hold phase)
-            },
             
             // ----------------------------------------------------------
             // SAMPLING & TIMING
@@ -220,7 +220,11 @@
             // MESSAGES - Easy to customize all game messages
             // ----------------------------------------------------------
             messages: {
-                welcome: "Welcome! Get ready to follow the fly. You will have a countdown above before the game begins on each trial. Press OK to begin and go fullscreen",
+                get welcome() {
+                    const hand = localStorage.getItem('hand_to_use') || "dominant";
+                    
+                    return `Welcome! Please use your <strong>${hand}</strong> hand when playing this. Get ready to follow the fly. Press OK to begin and go fullscreen`;
+                },
                 trialComplete: "Good job! Click OK to continue the game.",
                 baselineToRamp: "Great job! The controls may start to feel different. Try to adapt as you go. Click OK to continue.",
                 rampToHold: "Great job! Keep going! Click OK to continue.",
@@ -572,7 +576,7 @@
         // ============================================================
         function showModal(message) {
             return new Promise(resolve => {
-                elements.modalMessage.textContent = message;
+                elements.modalMessage.innerHTML = message;
                 elements.modal.classList.remove('hidden');
                 showCursor();
                 
@@ -593,7 +597,7 @@
 
         function showStartModal(message) {
             return new Promise(resolve => {
-                elements.modalMessage.textContent = message;
+                elements.modalMessage.innerHTML = message;
                 elements.modal.classList.remove('hidden');
                 showCursor();
                 
