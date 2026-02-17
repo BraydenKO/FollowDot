@@ -99,6 +99,37 @@
         .modal-button:hover {
             background: #1d4ed8;
         }
+
+        /* Hand verification modal */
+        .modal-hand-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .modal-hand-buttons button {
+            padding: 14px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #f8fafc;
+            color: #333;
+            transition: all 0.2s;
+        }
+
+        .modal-hand-buttons button:hover {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+
+        .modal-warning {
+            color: #dc2626;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
         
         /* HUD Elements */
         .trial-counter {
@@ -145,10 +176,22 @@
     <div class="dot user-dot" id="userDot"></div>
     <div class="dot fly-dot" id="flyDot"></div>
     
-    <div class="modal-overlay" id="modal">
+    <!-- Standard modal (for trial complete, transitions, etc.) -->
+    <div class="modal-overlay hidden" id="modal">
         <div class="modal">
             <p id="modalMessage"></p>
             <button class="modal-button" id="modalButton">OK</button>
+        </div>
+    </div>
+
+    <!-- Hand verification modal -->
+    <div class="modal-overlay hidden" id="handModal">
+        <div class="modal" style="padding-bottom: 30px;">
+            <p id="handModalMessage"></p>
+            <div class="modal-hand-buttons">
+                <button id="btnLeft">🫲 Left Hand</button>
+                <button id="btnRight">Right Hand 🫱</button>
+            </div>
         </div>
     </div>
     
@@ -157,73 +200,51 @@
 
     <script type="module">
         // ============================================================
-        // CONFIGURATION - Easy to modify game parameters
+        // CONFIGURATION
         // ============================================================
         const CONFIG = {
-            // PERTURBATION SETTINGS
-            // ----------------------------------------------------------
             perturbation: {
-                // Rotation ramp: starts at 0, increases by 1 degree per ramp trial
-                degreesPerTrial: 1,      // Degrees added per ramp trial
-                maxDegrees: 30,          // Maximum rotation (held during hold phase)
+                degreesPerTrial: 1,
+                maxDegrees: 30,
             },
 
-            // ----------------------------------------------------------
-            // TRIAL COUNTS - How many trials of each type
-            // ----------------------------------------------------------
             trials: {
-                baseline: 16,        // Feedback baseline (no rotation)
-                rampUp: 30,          // Gradual rotation increase (1 deg per trial)
-                hold: 6,             // Hold at max rotation
-                aftereffect: 4       // Post trials (no rotation)
+                baseline: 16,
+                rampUp: 30,
+                hold: 6,
+                aftereffect: 4,
             },
             
-            // ----------------------------------------------------------
-            // TRIAL DURATIONS (in milliseconds)
-            // ----------------------------------------------------------
             durations: {
-                trialLength: 30000   // 30 seconds per trial
+                trialLength: 30000
             },
             
-            
-            // ----------------------------------------------------------
-            // SAMPLING & TIMING
-            // ----------------------------------------------------------
             sampling: {
-                rate: 20,        // Hz (samples per second)
-                dt: 2000         // Milliseconds per time unit for fly movement
+                rate: 20,
+                dt: 2000
             },
             
-            // ----------------------------------------------------------
-            // PROXIMITY THRESHOLD
-            // ----------------------------------------------------------
             proximity: {
-                closeDistance: 100  // Pixels - distance to be "close" to fly
+                closeDistance: 100
             },
             
-            // ----------------------------------------------------------
-            // COUNTDOWN SETTINGS
-            // ----------------------------------------------------------
             countdown: {
-                duration: 0.5    // Seconds before each trial starts
+                duration: 0.5
             },
             
-            // ----------------------------------------------------------
-            // DATA UPLOAD
-            // ----------------------------------------------------------
             upload: {
-                enabled: true,   // Set to false to disable Firebase uploads
+                enabled: true,
                 showUploadStatus: true
             },
             
-            // ----------------------------------------------------------
-            // MESSAGES - Easy to customize all game messages
-            // ----------------------------------------------------------
             messages: {
-                get welcome() {
-                    const hand = localStorage.getItem('hand_to_use') || "dominant";
-                    
-                    return `Welcome! Please use your <strong>${hand.toUpperCase()}</strong> hand when playing this. Get ready to follow the fly. Press OK to begin and go fullscreen`;
+                get handVerification() {
+                    const hand = localStorage.getItem('hand_to_use') || "RIGHT";
+                    return `You will be using your <strong>${hand.toUpperCase()}</strong> hand for this experiment.<br><br>Which hand is on the mouse <strong>right now</strong>?`;
+                },
+                get wrongHand() {
+                    const hand = localStorage.getItem('hand_to_use') || "RIGHT";
+                    return `<span class="modal-warning">⚠️ Please switch to your ${hand.toUpperCase()} hand!</span><br>Place your <strong>${hand.toUpperCase()}</strong> hand on the mouse, then try again.<br><br>Which hand is on the mouse <strong>right now</strong>?`;
                 },
                 trialComplete: "Good job! Click OK to continue the game.",
                 baselineToRamp: "Great job! The controls may start to feel different. Try to adapt as you go. Click OK to continue.",
@@ -232,129 +253,89 @@
                 uploading: "Please wait for data to be processed and uploaded..."
             },
             
-            // ----------------------------------------------------------
-            // NAVIGATION
-            // ----------------------------------------------------------
             navigation: {
-                requireConsent: true,      // Redirect if consent not given
+                requireConsent: true,
                 consentPage: "index.html",
                 completionPage: "done.html"
             },
             
-            // ----------------------------------------------------------
-            // FIREBASE STRUCTURE
-            // ----------------------------------------------------------
             firebase: {
-                // Root collection for this experiment
                 experimentCollection: localStorage.getItem('collection_name'),
-                
-                // Subcollection name for trial data
                 trialsSubcollection: "trials",
-                
-                // Document names for each phase (will be auto-generated based on trial counts)
-                // baseline: baseline_1, baseline_2, ... baseline_16
-                // rampUp: ramp_1, ramp_2, ... ramp_30
-                // hold: hold_1, hold_2, ... hold_6
-                // aftereffect: aftereffect_1, aftereffect_2, ... aftereffect_4
                 documentPrefixes: {
                     baseline: "baseline",
                     rampUp: "ramp",
                     hold: "hold",
                     aftereffect: "aftereffect"
                 },
-                // How many trials to batch per upload (to stay under Firestore limits)
                 trialsPerUpload: 4
             }
         };
 
-        // ============================================================
-        // FLY MOVEMENT PARAMETERS (from original paper)
-        // ============================================================
         const FLY_PARAMS = {
-            // Y-axis amplitudes (scaled based on screen size)
             amplitudes: {
                 y: [2.31, 2.31, 2.31, 1.58, 1.03, 0.81, 0.70],
                 x: [2.31, 2.31, 2.31, 1.76, 1.30, 0.97, 0.73]
             },
-            // Frequencies for oscillation
             frequencies: {
                 y: [0.1, 0.25, 0.55, 0.85, 1.15, 1.55, 2.05],
                 x: [0.15, 0.35, 0.65, 0.95, 1.45, 1.85, 2.15]
             },
-            // Scale factors for different screen sizes
             scaleFactors: {
                 y: { base: 40, smallScreenRatios: [0.2, 0.2, 0.2, 0.15, 0.11, 0.08, 0.06] },
                 x: { base: 61, smallScreenRatios: [0.21, 0.21, 0.21, 0.14, 0.09, 0.07, 0.06] }
             },
-            // Minimum screen dimensions before scaling kicks in
             minDimensions: { width: 1440, height: 900 }
         };
 
         // ============================================================
-        // GAME STATE - All mutable state in one place
+        // GAME STATE
         // ============================================================
         const state = {
-            // Screen dimensions
             screen: {
                 width: window.screen.width,
                 height: window.screen.height
             },
-            
-            // Positions
             user: { x: 0, y: 0 },
             fly: { x: 0, y: 0 },
-            
-            // Game progress
-            currentPhase: "baseline",  // baseline, rampUp, hold, aftereffect, done
-            currentRotationDegrees: 0, // Current rotation in degrees
+            currentPhase: "baseline",
+            currentRotationDegrees: 0,
             trialIndex: 0,
             trialsRemaining: 0,
-            phaseTrialIndex: 0,        // Trial index within current phase
-            
-            // Timing
+            phaseTrialIndex: 0,
             trialStartTime: 0,
-            
-            // Data collection
             trials: {},
             currentTrialData: {
                 userPositions: [],
                 flyPositions: [],
                 distances: [],
-                rotationDegrees: 0     // Track rotation for this trial
+                rotationDegrees: 0
             },
             allDistances: [],
-            phis: [],  // Phase offsets for fly movement
-            
-            // Animation & intervals
+            phis: [],
             animationFrame: null,
             recordingInterval: null,
             currentMouseHandler: null,
-            
-            // Flags
             canNavigate: true
         };
 
         // ============================================================
-        // COMPUTED VALUES (derived from config and screen)
+        // COMPUTED VALUES
         // ============================================================
         function computeAmplitudes() {
             const { width, height } = state.screen;
             const { amplitudes, scaleFactors, minDimensions } = FLY_PARAMS;
-            
             let a_y, a_x;
-            
             if (height < minDimensions.height) {
                 a_y = scaleFactors.y.smallScreenRatios.map(r => r * height / 2);
             } else {
                 a_y = amplitudes.y.map(n => scaleFactors.y.base * n);
             }
-            
             if (width < minDimensions.width) {
                 a_x = scaleFactors.x.smallScreenRatios.map(r => r * width / 2);
             } else {
                 a_x = amplitudes.x.map(n => scaleFactors.x.base * n);
             }
-            
             return { a_x, a_y };
         }
 
@@ -370,6 +351,10 @@
             modal: document.getElementById('modal'),
             modalMessage: document.getElementById('modalMessage'),
             modalButton: document.getElementById('modalButton'),
+            handModal: document.getElementById('handModal'),
+            handModalMessage: document.getElementById('handModalMessage'),
+            btnLeft: document.getElementById('btnLeft'),
+            btnRight: document.getElementById('btnRight'),
             countdownTimer: document.getElementById('countdownTimer'),
             trialCounter: document.getElementById('trialCounter')
         };
@@ -384,14 +369,10 @@
             const { initializeFirebase: initFB } = await import('./firebaseConfig.js');
             const { doc, setDoc, Timestamp, collection } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
             const { signInAnonymously } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
-            
             const firebase = initFB();
             db = firebase.db;
             auth = firebase.auth;
-            
-            // Store these for later use
             window.firebaseModules = { doc, setDoc, Timestamp, collection, signInAnonymously };
-            
             return firebase;
         }
 
@@ -400,7 +381,6 @@
         // ============================================================
         function checkConsent() {
             if (!CONFIG.navigation.requireConsent) return;
-            
             if (sessionStorage.getItem('gameStarted') !== 'true') {
                 window.location.href = CONFIG.navigation.consentPage;
             } else {
@@ -413,38 +393,24 @@
         // ============================================================
         function goFullscreen() {
             const docEl = document.documentElement;
-            const requestFS = docEl.requestFullscreen || 
-                              docEl.mozRequestFullScreen || 
-                              docEl.webkitRequestFullscreen || 
-                              docEl.msRequestFullscreen;
-            
-            if (requestFS) {
-                requestFS.call(docEl);
-            }
+            const requestFS = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
+            if (requestFS) requestFS.call(docEl);
             document.body.style.cursor = 'none';
         }
 
         function showCursor() {
             document.body.style.cursor = 'auto';
-            // Exit pointer lock when showing cursor (for modals)
-            if (document.pointerLockElement) {
-                document.exitPointerLock();
-            }
+            if (document.pointerLockElement) document.exitPointerLock();
         }
 
         function hideCursor() {
             document.body.style.cursor = 'none';
         }
-        
+
         function requestPointerLock() {
-            // Request pointer lock for consistent mouse tracking
             const body = document.body;
-            body.requestPointerLock = body.requestPointerLock || 
-                                      body.mozRequestPointerLock || 
-                                      body.webkitRequestPointerLock;
-            if (body.requestPointerLock) {
-                body.requestPointerLock();
-            }
+            body.requestPointerLock = body.requestPointerLock || body.mozRequestPointerLock || body.webkitRequestPointerLock;
+            if (body.requestPointerLock) body.requestPointerLock();
         }
 
         // ============================================================
@@ -453,37 +419,25 @@
         function degreesToRadians(degrees) {
             return degrees * (Math.PI / 180);
         }
-        
+
         const mouseHandlers = {
-            // Normal mode: use movement deltas (works with pointer lock)
             normal(e) {
                 const { width, height } = state.screen;
-                
-                // Use movementX/Y for consistent behavior with pointer lock
                 state.user.x += e.movementX;
                 state.user.y += e.movementY;
-                
-                // Clamp to screen bounds
                 state.user.x = Math.max(0, Math.min(width, state.user.x));
                 state.user.y = Math.max(0, Math.min(height, state.user.y));
-                
                 updateUserDotPosition();
             },
-            
             rotate(e) {
                 const { width, height } = state.screen;
                 const radians = degreesToRadians(state.currentRotationDegrees);
-                
                 const rotatedDeltaX = e.movementX * Math.cos(radians) - e.movementY * Math.sin(radians);
                 const rotatedDeltaY = e.movementX * Math.sin(radians) + e.movementY * Math.cos(radians);
-                
                 state.user.x += rotatedDeltaX;
                 state.user.y += rotatedDeltaY;
-                
-                // Clamp to screen bounds
                 state.user.x = Math.max(0, Math.min(width, state.user.x));
                 state.user.y = Math.max(0, Math.min(height, state.user.y));
-                
                 updateUserDotPosition();
             }
         };
@@ -494,10 +448,7 @@
         }
 
         function setMouseHandler(useRotation) {
-            if (state.currentMouseHandler) {
-                document.removeEventListener('mousemove', state.currentMouseHandler);
-            }
-            
+            if (state.currentMouseHandler) document.removeEventListener('mousemove', state.currentMouseHandler);
             state.currentMouseHandler = useRotation ? mouseHandlers.rotate : mouseHandlers.normal;
             document.addEventListener('mousemove', state.currentMouseHandler);
         }
@@ -507,9 +458,7 @@
         // ============================================================
         function generatePhi() {
             const phi = [];
-            for (let i = 0; i < 7; i++) {
-                phi.push(Math.random() * 2 * Math.PI - Math.PI);
-            }
+            for (let i = 0; i < 7; i++) phi.push(Math.random() * 2 * Math.PI - Math.PI);
             return phi;
         }
 
@@ -517,17 +466,13 @@
             const { width, height } = state.screen;
             const { a_x, a_y } = amplitudes;
             const { frequencies } = FLY_PARAMS;
-            
             let dx = 0, dy = 0;
-            
             for (let i = 0; i < 7; i++) {
                 dx += a_x[i] * Math.cos(2 * Math.PI * t * frequencies.x[i] + phi[i]);
                 dy += a_y[i] * Math.cos(2 * Math.PI * t * frequencies.y[i] + phi[i]);
             }
-            
             state.fly.x = dx + width / 2;
             state.fly.y = dy + height / 2;
-            
             elements.flyDot.style.left = `${state.fly.x}px`;
             elements.flyDot.style.top = `${state.fly.y}px`;
         }
@@ -541,10 +486,7 @@
         // DISTANCE CALCULATIONS
         // ============================================================
         function getDistance() {
-            return Math.sqrt(
-                Math.pow(state.user.x - state.fly.x, 2) + 
-                Math.pow(state.user.y - state.fly.y, 2)
-            );
+            return Math.sqrt(Math.pow(state.user.x - state.fly.x, 2) + Math.pow(state.user.y - state.fly.y, 2));
         }
 
         function calculateDistancePercentages(distances) {
@@ -556,9 +498,7 @@
                 3: Math.round(11 * maxDistance / 15),
                 4: Math.round(15 * maxDistance / 15)
             };
-            
             const sections = [0, 0, 0, 0, 0];
-            
             distances.forEach(distance => {
                 if (distance < sectionSizes[0]) sections[0]++;
                 else if (distance < sectionSizes[1]) sections[1]++;
@@ -566,7 +506,6 @@
                 else if (distance < sectionSizes[3]) sections[3]++;
                 else sections[4]++;
             });
-            
             const percentages = sections.map(count => (count / distances.length) * 100);
             return { sectionSizes, percentages };
         }
@@ -579,13 +518,11 @@
                 elements.modalMessage.innerHTML = message;
                 elements.modal.classList.remove('hidden');
                 showCursor();
-                
                 const handleClick = () => {
                     elements.modalButton.removeEventListener('click', handleClick);
                     hideModal();
                     resolve();
                 };
-                
                 elements.modalButton.addEventListener('click', handleClick);
             });
         }
@@ -595,20 +532,53 @@
             hideCursor();
         }
 
-        function showStartModal(message) {
+        function showHandVerification() {
+            const requiredHand = (localStorage.getItem('hand_to_use') || 'RIGHT').toUpperCase();
+
             return new Promise(resolve => {
-                elements.modalMessage.innerHTML = message;
-                elements.modal.classList.remove('hidden');
-                showCursor();
-                
-                const handleClick = () => {
-                    elements.modalButton.removeEventListener('click', handleClick);
-                    goFullscreen();
-                    hideModal();
-                    resolve();
-                };
-                
-                elements.modalButton.addEventListener('click', handleClick);
+                let isFirstAttempt = true;
+
+                function showPrompt() {
+                    elements.handModalMessage.innerHTML = isFirstAttempt
+                        ? CONFIG.messages.handVerification
+                        : CONFIG.messages.wrongHand;
+                    elements.handModal.classList.remove('hidden');
+                    showCursor();
+                }
+
+                function cleanup() {
+                    elements.btnLeft.removeEventListener('click', handleLeft);
+                    elements.btnRight.removeEventListener('click', handleRight);
+                    elements.handModal.classList.add('hidden');
+                    hideCursor();
+                }
+
+                function handleLeft() {
+                    if (requiredHand === 'LEFT') {
+                        cleanup();
+                        goFullscreen();
+                        resolve();
+                    } else {
+                        isFirstAttempt = false;
+                        showPrompt();
+                    }
+                }
+
+                function handleRight() {
+                    if (requiredHand === 'RIGHT') {
+                        cleanup();
+                        goFullscreen();
+                        resolve();
+                    } else {
+                        isFirstAttempt = false;
+                        showPrompt();
+                    }
+                }
+
+                elements.btnLeft.addEventListener('click', handleLeft);
+                elements.btnRight.addEventListener('click', handleRight);
+
+                showPrompt();
             });
         }
 
@@ -618,13 +588,10 @@
         function showCountdown(seconds) {
             return new Promise(resolve => {
                 let remaining = seconds;
-                
                 elements.countdownTimer.textContent = `${remaining}s`;
                 elements.countdownTimer.classList.remove('hidden');
-                
                 const interval = setInterval(() => {
                     remaining = Math.round((remaining * 10 - 1)) / 10;
-                    
                     if (remaining <= 0) {
                         clearInterval(interval);
                         elements.countdownTimer.classList.add('hidden');
@@ -642,22 +609,17 @@
         function startRecording() {
             state.recordingInterval = setInterval(() => {
                 const time = Date.now();
-                
                 state.currentTrialData.userPositions.push({
-                    x: state.user.x,
-                    y: state.user.y,
+                    x: state.user.x, y: state.user.y,
                     phase: state.currentPhase,
                     rotationDegrees: state.currentRotationDegrees,
                     timestamp: time
                 });
-                
                 state.currentTrialData.flyPositions.push({
-                    x: state.fly.x,
-                    y: state.fly.y,
+                    x: state.fly.x, y: state.fly.y,
                     phase: state.currentPhase,
                     timestamp: time
                 });
-                
                 state.currentTrialData.distances.push(getDistance());
             }, samplingDelay);
         }
@@ -678,17 +640,8 @@
                 rotationDegrees: state.currentRotationDegrees,
                 phaseTrialIndex: state.phaseTrialIndex
             };
-            
             state.allDistances.push(state.currentTrialData.distances);
-            
-            // Reset current trial data
-            state.currentTrialData = {
-                userPositions: [],
-                flyPositions: [],
-                distances: [],
-                rotationDegrees: 0
-            };
-            
+            state.currentTrialData = { userPositions: [], flyPositions: [], distances: [], rotationDegrees: 0 };
             state.trialIndex++;
             state.phaseTrialIndex++;
         }
@@ -698,7 +651,6 @@
         // ============================================================
         function showUploadStatus(show) {
             if (!CONFIG.upload.showUploadStatus) return;
-            
             if (show) {
                 elements.trialCounter.textContent = CONFIG.messages.uploading;
                 elements.trialCounter.classList.add('uploading');
@@ -710,66 +662,42 @@
 
         async function uploadTrialData(startIndex, endIndex, docName) {
             if (startIndex === endIndex) return;
-            
             const { doc, setDoc, Timestamp, collection } = window.firebaseModules;
             const { experimentCollection, trialsSubcollection } = CONFIG.firebase;
-            
             const entries = Object.entries(state.trials).slice(startIndex, endIndex);
             const trialData = Object.fromEntries(entries);
-            
-            // Build user ID: prolificId_visitorUid
             const oderId = `${prolificId}_${auth.currentUser.uid}`;
-            
-            // Structure: experiments_v2 / oderId / trials / docName
-            // First, create/update the user document with metadata
             const userDocRef = doc(db, experimentCollection, oderId);
             await setDoc(userDocRef, {
-                oderId: oderId,
-                visitorUid: auth.currentUser.uid,
-                prolificId: prolificId,
+                oderId, visitorUid: auth.currentUser.uid, prolificId,
                 createdAt: Timestamp.fromDate(new Date()),
-                screenWidth: state.screen.width,
-                screenHeight: state.screen.height,
-                trialConfig: CONFIG.trials,
-                perturbationConfig: CONFIG.perturbation
+                screenWidth: state.screen.width, screenHeight: state.screen.height,
+                trialConfig: CONFIG.trials, perturbationConfig: CONFIG.perturbation
             }, { merge: true });
-            
-            // Then, add trial data to the trials subcollection
             const trialsCollectionRef = collection(db, experimentCollection, oderId, trialsSubcollection);
             const trialDocRef = doc(trialsCollectionRef, docName);
-            
             await setDoc(trialDocRef, {
-                trials: trialData,
-                uploadedAt: Timestamp.fromDate(new Date()),
-                trialType: docName
+                trials: trialData, uploadedAt: Timestamp.fromDate(new Date()), trialType: docName
             });
         }
 
         async function uploadPhaseData(phase, startTrialIndex, endTrialIndex) {
             if (!CONFIG.upload.enabled) return;
-            
             showUploadStatus(true);
-            
             try {
                 const { documentPrefixes, trialsPerUpload } = CONFIG.firebase;
                 const prefix = documentPrefixes[phase];
-                const totalTrials = endTrialIndex - startTrialIndex;
-                
-                // Upload in batches
                 let batchNum = 1;
                 for (let i = startTrialIndex; i < endTrialIndex; i += trialsPerUpload) {
                     const batchEnd = Math.min(i + trialsPerUpload, endTrialIndex);
-                    const docName = `${prefix}_batch${batchNum}`;
-                    await uploadTrialData(i, batchEnd, docName);
+                    await uploadTrialData(i, batchEnd, `${prefix}_batch${batchNum}`);
                     batchNum++;
                 }
-                
-                console.log(`${phase} phase data uploaded successfully (${totalTrials} trials)`);
+                console.log(`${phase} phase data uploaded successfully`);
             } catch (error) {
                 console.error("Upload error:", error);
                 state.canNavigate = false;
             }
-            
             showUploadStatus(false);
         }
 
@@ -777,53 +705,28 @@
         // GAME LOOP
         // ============================================================
         function gameLoop(phi) {
-            if (state.currentPhase === "done") {
-                finishGame();
-                return;
-            }
-            
+            if (state.currentPhase === "done") { finishGame(); return; }
             const t = (Date.now() - state.trialStartTime) / CONFIG.sampling.dt;
             updateFlyPosition(t, phi);
-            
-            // Update user dot appearance based on proximity
             const isClose = getDistance() < CONFIG.proximity.closeDistance;
             elements.userDot.classList.toggle('close', isClose);
-            
             state.animationFrame = requestAnimationFrame(() => gameLoop(phi));
         }
 
         function pauseGame(hideUser = true) {
             cancelAnimationFrame(state.animationFrame);
-            
-            // Reset user position to center of screen
             state.user.x = state.screen.width / 2;
             state.user.y = state.screen.height / 2;
             updateUserDotPosition();
-            
-            if (hideUser) {
-                elements.userDot.style.visibility = 'hidden';
-            }
-            
-            // Exit pointer lock when pausing
-            if (document.pointerLockElement) {
-                document.exitPointerLock();
-            }
+            if (hideUser) elements.userDot.style.visibility = 'hidden';
+            if (document.pointerLockElement) document.exitPointerLock();
         }
 
         function resumeGame(generateNewPhi = true) {
-            // Use rotation handler if we have any rotation, otherwise normal
             setMouseHandler(state.currentRotationDegrees > 0);
-            
             elements.userDot.style.visibility = 'visible';
-            
-            // Request pointer lock for consistent mouse tracking
             requestPointerLock();
-            
-            if (generateNewPhi) {
-                const phi = generatePhi();
-                state.phis.push(phi);
-            }
-            
+            if (generateNewPhi) { state.phis.push(generatePhi()); }
             state.trialStartTime = Date.now();
             gameLoop(state.phis[state.phis.length - 1]);
         }
@@ -833,25 +736,13 @@
         // ============================================================
         function updateRotationForPhase(phase, trialIndexInPhase) {
             const { degreesPerTrial, maxDegrees } = CONFIG.perturbation;
-            
             switch (phase) {
-                case "baseline":
-                    state.currentRotationDegrees = 0;
-                    break;
-                case "rampUp":
-                    // Increase by 1 degree per trial (trial 0 = 1 deg, trial 29 = 30 deg)
-                    state.currentRotationDegrees = (trialIndexInPhase + 1) * degreesPerTrial;
-                    break;
-                case "hold":
-                    state.currentRotationDegrees = maxDegrees;
-                    break;
-                case "aftereffect":
-                    state.currentRotationDegrees = 0;
-                    break;
-                default:
-                    state.currentRotationDegrees = 0;
+                case "baseline": state.currentRotationDegrees = 0; break;
+                case "rampUp": state.currentRotationDegrees = (trialIndexInPhase + 1) * degreesPerTrial; break;
+                case "hold": state.currentRotationDegrees = maxDegrees; break;
+                case "aftereffect": state.currentRotationDegrees = 0; break;
+                default: state.currentRotationDegrees = 0;
             }
-            
             console.log(`Phase: ${phase}, Trial: ${trialIndexInPhase + 1}, Rotation: ${state.currentRotationDegrees}°`);
         }
 
@@ -859,14 +750,9 @@
         // TRIAL MANAGEMENT
         // ============================================================
         async function runSingleTrial() {
-            const duration = CONFIG.durations.trialLength;
-            
             elements.trialCounter.textContent = state.trialsRemaining;
             state.trialStartTime = Date.now();
-            
-            // Wait for trial duration
-            await new Promise(resolve => setTimeout(resolve, duration));
-            
+            await new Promise(resolve => setTimeout(resolve, CONFIG.durations.trialLength));
             pauseGame();
             stopRecording();
             saveTrialData();
@@ -876,96 +762,40 @@
         async function runPhase(phase, trialCount, nextPhase, transitionMessage) {
             state.currentPhase = phase;
             state.phaseTrialIndex = 0;
-            
             const phaseStartIndex = state.trialIndex;
-            
             for (let i = 0; i < trialCount; i++) {
-                // Update rotation for this specific trial
                 updateRotationForPhase(phase, i);
-                
-                // Set mouse handler based on rotation
                 setMouseHandler(state.currentRotationDegrees > 0);
-                
-                // Generate phi and place fly
                 const phi = generatePhi();
                 state.phis.push(phi);
                 placeFlyAtStart();
-                
-                // Reset user position to center before each trial
                 state.user.x = state.screen.width / 2;
                 state.user.y = state.screen.height / 2;
                 updateUserDotPosition();
-                
-                // Show user dot so they can see their starting position during countdown
                 elements.userDot.style.visibility = 'visible';
-                
-                // Countdown before trial
                 await showCountdown(CONFIG.countdown.duration);
-                
-                // Request pointer lock and start recording
                 requestPointerLock();
                 startRecording();
-                resumeGame(false); // Don't generate new phi, we already did
+                resumeGame(false);
                 await runSingleTrial();
-                
                 const isLastTrialOfPhase = i === trialCount - 1;
-                
                 if (isLastTrialOfPhase) {
-                    // Upload this phase's data
                     await uploadPhaseData(phase, phaseStartIndex, state.trialIndex);
-                    
-                    // Show transition message if there's a next phase
-                    if (nextPhase !== "done") {
-                        await showModal(transitionMessage);
-                    }
+                    if (nextPhase !== "done") await showModal(transitionMessage);
                 } else {
-                    // Regular trial completion
                     await showModal(CONFIG.messages.trialComplete);
                 }
             }
-            
             return nextPhase;
         }
 
         async function runGame() {
-            const { trials } = CONFIG;
-            const { messages } = CONFIG;
-            
+            const { trials, messages } = CONFIG;
             state.trialsRemaining = trials.baseline + trials.rampUp + trials.hold + trials.aftereffect;
-            
-            // Phase 1: Baseline (no rotation)
-            await runPhase(
-                "baseline", 
-                trials.baseline, 
-                "rampUp", 
-                messages.baselineToRamp
-            );
-            
-            // Phase 2: Ramp Up (1 degree per trial, 1-30 degrees)
-            await runPhase(
-                "rampUp", 
-                trials.rampUp, 
-                "hold", 
-                messages.rampToHold
-            );
-            
-            // Phase 3: Hold (stay at 30 degrees)
-            await runPhase(
-                "hold", 
-                trials.hold, 
-                "aftereffect", 
-                messages.holdToAftereffect
-            );
-            
-            // Phase 4: Aftereffect (no rotation)
-            await runPhase(
-                "aftereffect", 
-                trials.aftereffect, 
-                "done", 
-                ""
-            );
-            
-            // Game complete
+            await runPhase("baseline", trials.baseline, "rampUp", messages.baselineToRamp);
+            await runPhase("rampUp", trials.rampUp, "hold", messages.rampToHold);
+            await runPhase("hold", trials.hold, "aftereffect", messages.holdToAftereffect);
+            await runPhase("aftereffect", trials.aftereffect, "done", "");
             state.currentPhase = "done";
             finishGame();
         }
@@ -976,43 +806,31 @@
         function getHighlights() {
             const flatDistances = state.allDistances.flat();
             const { trials } = CONFIG;
-            
             const cumulativeLengths = state.allDistances.reduce((acc, arr) => {
                 acc.push((acc.length > 0 ? acc[acc.length - 1] : 0) + arr.length);
                 return acc;
             }, []);
-            
-            // Highlights at end of each phase
             const highlights = [
-                cumulativeLengths[trials.baseline - 1],                                          // End of baseline
-                cumulativeLengths[trials.baseline + trials.rampUp - 1],                          // End of ramp
-                cumulativeLengths[trials.baseline + trials.rampUp + trials.hold - 1],            // End of hold
-                cumulativeLengths[trials.baseline + trials.rampUp + trials.hold + trials.aftereffect - 1]  // End of aftereffect
+                cumulativeLengths[trials.baseline - 1],
+                cumulativeLengths[trials.baseline + trials.rampUp - 1],
+                cumulativeLengths[trials.baseline + trials.rampUp + trials.hold - 1],
+                cumulativeLengths[trials.baseline + trials.rampUp + trials.hold + trials.aftereffect - 1]
             ];
-            
             return { flatDistances, highlights };
         }
 
         async function finishGame() {
             console.log("Game complete");
-            
             const { flatDistances, highlights } = getHighlights();
             const { sectionSizes, percentages } = calculateDistancePercentages(flatDistances);
-            
-            // Store results for completion page
             localStorage.setItem('sectionSizes', JSON.stringify(Object.values(sectionSizes)));
             localStorage.setItem('percentages', JSON.stringify(percentages));
             localStorage.setItem('distances', JSON.stringify(flatDistances));
             localStorage.setItem('game_config', JSON.stringify({
-                trials: CONFIG.trials,
-                durations: CONFIG.durations,
-                perturbation: CONFIG.perturbation
+                trials: CONFIG.trials, durations: CONFIG.durations, perturbation: CONFIG.perturbation
             }));
             localStorage.setItem('highlights', JSON.stringify(highlights));
-            
-            if (state.canNavigate) {
-                window.location.href = CONFIG.navigation.completionPage;
-            }
+            if (state.canNavigate) window.location.href = CONFIG.navigation.completionPage;
         }
 
         // ============================================================
@@ -1020,33 +838,27 @@
         // ============================================================
         async function initialize() {
             checkConsent();
-            
-            // Initialize positions
             state.user.x = state.screen.width / 2;
             state.user.y = state.screen.height / 2;
             state.fly.x = state.screen.width / 2;
             state.fly.y = state.screen.height / 2;
-            
-            // Position dots
             updateUserDotPosition();
             elements.flyDot.style.left = `${state.fly.x}px`;
             elements.flyDot.style.top = `${state.fly.y}px`;
-            
             try {
                 await initializeFirebase();
                 await window.firebaseModules.signInAnonymously(auth);
                 console.log("User signed in anonymously");
-                
-                await showStartModal(CONFIG.messages.welcome);
-                
-                // Start the game
+
+                // Hand verification before starting
+                await showHandVerification();
+
                 await runGame();
             } catch (error) {
                 console.error("Initialization error:", error);
             }
         }
 
-        // Start the game
         initialize();
     </script>
 </body>

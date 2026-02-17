@@ -390,7 +390,7 @@
     <div class="overlay" id="overlay"></div>
 
     <!-- ============================================================
-         QUESTION 1: Did you notice any change?
+         QUESTION 1: Which hand did you use?
          ============================================================ -->
     <div class="popup" id="question1">
         <div class="progress-indicator">
@@ -398,27 +398,22 @@
             <div class="progress-dot"></div>
             <div class="progress-dot"></div>
             <div class="progress-dot"></div>
+            <div class="progress-dot"></div>
         </div>
         
-        <h2>Question 1 of 4</h2>
+        <h2>Question 1 of 5</h2>
         <p class="question-text">
-            During the experiment, your mouse/cursor control may or may not have been altered at some point.
-            <br><br>
-            <strong>Did you notice any change in how the cursor responded to your hand movements at any point during the experiment?</strong>
+            <strong>Which hand did you use to control the mouse/cursor during the task?</strong>
         </p>
         
         <div class="radio-group" id="q1-options">
-            <div class="radio-option" onclick="selectRadio('q1', 'yes_clear')">
-                <input type="radio" name="q1" id="q1-yes-clear" value="yes_clear">
-                <label for="q1-yes-clear">Yes, I clearly noticed a change</label>
+            <div class="radio-option" onclick="selectRadio('q1', 'right')">
+                <input type="radio" name="q1" id="q1-right" value="right">
+                <label for="q1-right">Right hand</label>
             </div>
-            <div class="radio-option" onclick="selectRadio('q1', 'yes_slight')">
-                <input type="radio" name="q1" id="q1-yes-slight" value="yes_slight">
-                <label for="q1-yes-slight">Yes, but it was subtle / I wasn't sure</label>
-            </div>
-            <div class="radio-option" onclick="selectRadio('q1', 'no')">
-                <input type="radio" name="q1" id="q1-no" value="no">
-                <label for="q1-no">No, I didn't notice any change</label>
+            <div class="radio-option" onclick="selectRadio('q1', 'left')">
+                <input type="radio" name="q1" id="q1-left" value="left">
+                <label for="q1-left">Left hand</label>
             </div>
         </div>
         
@@ -428,17 +423,58 @@
     </div>
 
     <!-- ============================================================
-         QUESTION 2: What type of change?
+         QUESTION 2: Did you notice any change?
          ============================================================ -->
-    <div class="popup wide hidden" id="question2">
+    <div class="popup hidden" id="question2">
         <div class="progress-indicator">
+            <div class="progress-dot completed"></div>
+            <div class="progress-dot active"></div>
+            <div class="progress-dot"></div>
+            <div class="progress-dot"></div>
+            <div class="progress-dot"></div>
+        </div>
+        
+        <h2>Question 2 of 5</h2>
+        <p class="question-text">
+            During the experiment, your mouse/cursor control may or may not have been altered at some point.
+            <br><br>
+            <strong>Did you notice any change in how the cursor responded to your hand movements at any point during the experiment?</strong>
+        </p>
+        
+        <div class="radio-group" id="q2-options">
+            <div class="radio-option" onclick="selectRadio('q2', 'yes_clear')">
+                <input type="radio" name="q2" id="q2-yes-clear" value="yes_clear">
+                <label for="q2-yes-clear">Yes, I clearly noticed a change</label>
+            </div>
+            <div class="radio-option" onclick="selectRadio('q2', 'yes_slight')">
+                <input type="radio" name="q2" id="q2-yes-slight" value="yes_slight">
+                <label for="q2-yes-slight">Yes, but it was subtle / I wasn't sure</label>
+            </div>
+            <div class="radio-option" onclick="selectRadio('q2', 'no')">
+                <input type="radio" name="q2" id="q2-no" value="no">
+                <label for="q2-no">No, I didn't notice any change</label>
+            </div>
+        </div>
+        
+        <div class="button-row">
+            <button class="btn btn-secondary" onclick="goBack('question1', 'question2')">Back</button>
+            <button class="btn btn-primary" onclick="submitQ2()">Next</button>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         QUESTION 3: What type of change?
+         ============================================================ -->
+    <div class="popup wide hidden" id="question3">
+        <div class="progress-indicator">
+            <div class="progress-dot completed"></div>
             <div class="progress-dot completed"></div>
             <div class="progress-dot active"></div>
             <div class="progress-dot"></div>
             <div class="progress-dot"></div>
         </div>
         
-        <h2>Question 2 of 4</h2>
+        <h2>Question 3 of 5</h2>
         <p class="question-text">
             <strong>Which of the following best describes how the cursor movement changed?</strong>
             <br><br>
@@ -446,7 +482,7 @@
             the cursor would move in the direction of the <strong>dashed arrow</strong>.
         </p>
         
-        <div class="image-grid" id="q2-images">
+        <div class="image-grid" id="q3-images">
             <div class="image-option" onclick="selectImage(0)">
                 <img src="Motions/30DegC.png" alt="30° Clockwise Rotation">
                 <div class="image-label">30° Clockwise Rotation</div>
@@ -482,23 +518,24 @@
         </div>
         
         <div class="button-row">
-            <button class="btn btn-secondary" onclick="goBack('question1', 'question2')">Back</button>
-            <button class="btn btn-primary" onclick="submitQ2()">Next</button>
+            <button class="btn btn-secondary" onclick="goBack('question2', 'question3')">Back</button>
+            <button class="btn btn-primary" onclick="submitQ3()">Next</button>
         </div>
     </div>
 
     <!-- ============================================================
-         QUESTION 3: Confidence Rating
+         QUESTION 4: Confidence Rating
          ============================================================ -->
-    <div class="popup hidden" id="question3">
+    <div class="popup hidden" id="question4">
         <div class="progress-indicator">
+            <div class="progress-dot completed"></div>
             <div class="progress-dot completed"></div>
             <div class="progress-dot completed"></div>
             <div class="progress-dot active"></div>
             <div class="progress-dot"></div>
         </div>
         
-        <h2>Question 3 of 4</h2>
+        <h2>Question 4 of 5</h2>
         <p class="question-text">
             <strong>How confident are you in your answer to the previous question?</strong>
             <br>
@@ -516,23 +553,24 @@
         </div>
         
         <div class="button-row">
-            <button class="btn btn-secondary" onclick="goBack('question2', 'question3')">Back</button>
-            <button class="btn btn-primary" onclick="submitQ3()">Next</button>
+            <button class="btn btn-secondary" onclick="goBack('question3', 'question4')">Back</button>
+            <button class="btn btn-primary" onclick="submitQ4()">Next</button>
         </div>
     </div>
 
     <!-- ============================================================
-         QUESTION 4: Optional Description
+         QUESTION 5: Optional Description
          ============================================================ -->
-    <div class="popup hidden" id="question4">
+    <div class="popup hidden" id="question5">
         <div class="progress-indicator">
+            <div class="progress-dot completed"></div>
             <div class="progress-dot completed"></div>
             <div class="progress-dot completed"></div>
             <div class="progress-dot completed"></div>
             <div class="progress-dot active"></div>
         </div>
         
-        <h2>Question 4 of 4</h2>
+        <h2>Question 5 of 5</h2>
         <p class="question-text">
             <strong>Is there anything else you'd like to share about your experience?</strong>
             <br>
@@ -549,8 +587,8 @@
         <div class="word-counter" id="word-counter">0 / 300 words</div>
         
         <div class="button-row">
-            <button class="btn btn-secondary" onclick="goBack('question3', 'question4')">Back</button>
-            <button class="btn btn-primary" onclick="submitQ4()">Submit</button>
+            <button class="btn btn-secondary" onclick="goBack('question4', 'question5')">Back</button>
+            <button class="btn btn-primary" onclick="submitQ5()">Submit</button>
         </div>
     </div>
 
@@ -581,10 +619,11 @@
         // SURVEY STATE
         // ============================================================
         const surveyState = {
-            q1_noticed_change: null,      // 'yes_clear', 'yes_slight', 'no'
-            q2_perturbation_type: null,   // 0-7 (image index)
-            q3_confidence: 5,             // 1-10
-            q4_additional_comments: ''    // free text
+            q1_hand_used: null,           // 'right', 'left'
+            q2_noticed_change: null,      // 'yes_clear', 'yes_slight', 'no'
+            q3_perturbation_type: null,   // 0-7 (image index)
+            q4_confidence: 5,             // 1-10
+            q5_additional_comments: ''    // free text
         };
 
         let selectedImageIndex = -1;
@@ -617,7 +656,9 @@
             
             // Store value
             if (questionId === 'q1') {
-                surveyState.q1_noticed_change = value;
+                surveyState.q1_hand_used = value;
+            } else if (questionId === 'q2') {
+                surveyState.q2_noticed_change = value;
             }
         }
 
@@ -627,12 +668,12 @@
             });
             document.querySelectorAll('.image-option')[index].classList.add('selected');
             selectedImageIndex = index;
-            surveyState.q2_perturbation_type = index;
+            surveyState.q3_perturbation_type = index;
         }
 
         function updateConfidenceDisplay(value) {
             document.getElementById('confidence-value').textContent = value;
-            surveyState.q3_confidence = parseInt(value);
+            surveyState.q4_confidence = parseInt(value);
         }
 
         function countWords(textarea) {
@@ -660,35 +701,43 @@
         // QUESTION SUBMISSION HANDLERS
         // ============================================================
         function submitQ1() {
-            if (!surveyState.q1_noticed_change) {
+            if (!surveyState.q1_hand_used) {
+                alert('Please select which hand you used before continuing.');
+                return;
+            }
+            showPopup('question2');
+        }
+
+        function submitQ2() {
+            if (!surveyState.q2_noticed_change) {
                 alert('Please select an answer before continuing.');
                 return;
             }
             
             // If they didn't notice any change, skip to confidence question
-            // but pre-select "No Change" for Q2
-            if (surveyState.q1_noticed_change === 'no') {
-                surveyState.q2_perturbation_type = 7; // "No Change / Not Sure"
+            // but pre-select "No Change" for Q3
+            if (surveyState.q2_noticed_change === 'no') {
+                surveyState.q3_perturbation_type = 7; // "No Change / Not Sure"
                 selectedImageIndex = 7;
-                showPopup('question3');
+                showPopup('question4');
             } else {
-                showPopup('question2');
+                showPopup('question3');
             }
         }
 
-        function submitQ2() {
+        function submitQ3() {
             if (selectedImageIndex === -1) {
                 alert('Please select an option before continuing.');
                 return;
             }
-            showPopup('question3');
-        }
-
-        function submitQ3() {
             showPopup('question4');
         }
 
-        async function submitQ4() {
+        function submitQ4() {
+            showPopup('question5');
+        }
+
+        async function submitQ5() {
             const comments = document.getElementById('additional-comments').value.trim();
             const wordCount = countWords(document.getElementById('additional-comments'));
             
@@ -697,10 +746,10 @@
                 return;
             }
             
-            surveyState.q4_additional_comments = comments;
+            surveyState.q5_additional_comments = comments;
             
             // Hide survey
-            document.getElementById('question4').classList.add('hidden');
+            document.getElementById('question5').classList.add('hidden');
             document.getElementById('overlay').classList.add('hidden');
             
             // Upload to Firebase
@@ -729,7 +778,7 @@
                 await setDoc(surveyDocRef, {
                     ...surveyState,
                     submittedAt: Timestamp.fromDate(new Date()),
-                    perturbationTypeLabel: getPerturbationLabel(surveyState.q2_perturbation_type)
+                    perturbationTypeLabel: getPerturbationLabel(surveyState.q3_perturbation_type)
                 });
                 
                 console.log('Survey responses uploaded successfully!');
