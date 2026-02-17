@@ -246,7 +246,7 @@
             // ----------------------------------------------------------
             firebase: {
                 // Root collection for this experiment
-                experimentCollection: "experiments_v2",
+                experimentCollection: localStorage.getItem('collection_name'),
                 
                 // Subcollection name for trial data
                 trialsSubcollection: "trials",

@@ -611,6 +611,21 @@
         };
 
         // ============================================================
+        // COLLECTION NAME CALCULATOR
+        // ============================================================
+        function getCollectionName() {
+            const recruit_hand = CONFIG.handedness.recruitingFor;
+            const use_hand = CONFIG.handedness.hand_to_use;
+            const direction = CONFIG.handedness.direction;
+            const collection_name = `experiments_v2_${recruit_hand}_${use_hand}_${direction}`;
+
+            CONFIG.firebase.experimentCollection = collection_name;
+            return collection_name;
+        }
+        getCollectionName();
+
+
+        // ============================================================
         // EDINBURGH HANDEDNESS INVENTORY QUESTIONS
         // ============================================================
         const HANDEDNESS_QUESTIONS = [
@@ -938,6 +953,7 @@
             elements.btnBegin.addEventListener('click', () => {
                 localStorage.setItem('prolificId', state.demographics.prolificId);
                 localStorage.setItem('hand_to_use', CONFIG.handedness.hand_to_use);
+                localStorage.setItem('collection_name', CONFIG.firebase.experimentCollection)
                 sessionStorage.setItem('gameStarted', 'true');
                 localStorage.setItem('fullscreenIntent', 'true');
                 window.location.href = CONFIG.navigation.gamePage;
