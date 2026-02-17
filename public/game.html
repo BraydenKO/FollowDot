@@ -223,7 +223,7 @@
                 get welcome() {
                     const hand = localStorage.getItem('hand_to_use') || "dominant";
                     
-                    return `Welcome! Please use your <strong>${hand}</strong> hand when playing this. Get ready to follow the fly. Press OK to begin and go fullscreen`;
+                    return `Welcome! Please use your <strong>${hand.toUpperCase()}</strong> hand when playing this. Get ready to follow the fly. Press OK to begin and go fullscreen`;
                 },
                 trialComplete: "Good job! Click OK to continue the game.",
                 baselineToRamp: "Great job! The controls may start to feel different. Try to adapt as you go. Click OK to continue.",
