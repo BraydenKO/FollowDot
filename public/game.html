@@ -204,19 +204,19 @@
         // ============================================================
         const CONFIG = {
             perturbation: {
-                degreesPerTrial: 1,
-                maxDegrees: 30,
+                degreesPerTrial: -1,
+                maxDegrees: -30,
             },
 
             trials: {
-                baseline: 16,
-                rampUp: 30,
-                hold: 6,
-                aftereffect: 4,
+                baseline: 1,
+                rampUp: 1,
+                hold: 1,
+                aftereffect: 1,
             },
             
             durations: {
-                trialLength: 30000
+                trialLength: 3000
             },
             
             sampling: {
@@ -723,7 +723,7 @@
         }
 
         function resumeGame(generateNewPhi = true) {
-            setMouseHandler(state.currentRotationDegrees > 0);
+            setMouseHandler(state.currentRotationDegrees != 0);
             elements.userDot.style.visibility = 'visible';
             requestPointerLock();
             if (generateNewPhi) { state.phis.push(generatePhi()); }
@@ -765,7 +765,7 @@
             const phaseStartIndex = state.trialIndex;
             for (let i = 0; i < trialCount; i++) {
                 updateRotationForPhase(phase, i);
-                setMouseHandler(state.currentRotationDegrees > 0);
+                setMouseHandler(state.currentRotationDegrees != 0);
                 const phi = generatePhi();
                 state.phis.push(phi);
                 placeFlyAtStart();
