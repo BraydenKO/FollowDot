@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,7 +12,7 @@
         * {
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             margin: 0;
@@ -35,11 +36,11 @@
             width: 100%;
             max-width: 500px;
         }
-        
+
         .container.wide {
             max-width: 700px;
         }
-        
+
         .container.extra-wide {
             max-width: 900px;
         }
@@ -57,7 +58,7 @@
             margin: 0 0 25px 0;
             font-size: 1.8em;
         }
-        
+
         h2 {
             color: #444;
             font-size: 1.3em;
@@ -72,7 +73,7 @@
             color: #555;
             line-height: 1.6;
         }
-        
+
         .blurb:last-of-type {
             margin-bottom: 25px;
         }
@@ -81,7 +82,7 @@
             color: #16a34a;
             font-weight: 600;
         }
-        
+
         .highlight-purple {
             color: #7c3aed;
             font-weight: 600;
@@ -90,7 +91,8 @@
         .highlight-blue {
             color: #2563eb;
             font-weight: 600;
-            text-transform: uppercase; /* Ensures it looks important */
+            text-transform: uppercase;
+            /* Ensures it looks important */
         }
 
         /* ============================================================
@@ -99,7 +101,7 @@
         .question {
             margin-bottom: 20px;
         }
-        
+
         .question-label {
             font-weight: 500;
             color: #333;
@@ -107,8 +109,8 @@
             display: block;
         }
 
-        select, 
-        input[type="number"], 
+        select,
+        input[type="number"],
         input[type="text"] {
             width: 100%;
             padding: 12px;
@@ -117,7 +119,7 @@
             font-size: 1em;
             transition: border-color 0.2s;
         }
-        
+
         select:focus,
         input:focus {
             outline: none;
@@ -132,7 +134,7 @@
             gap: 12px;
             margin-bottom: 20px;
         }
-        
+
         .handedness-item {
             display: flex;
             align-items: center;
@@ -142,18 +144,18 @@
             border-radius: 8px;
             border: 1px solid #e2e8f0;
         }
-        
+
         .handedness-item label {
             font-weight: 500;
             color: #374151;
             flex: 1;
         }
-        
+
         .handedness-options {
             display: flex;
             gap: 20px;
         }
-        
+
         .handedness-options label {
             display: flex;
             align-items: center;
@@ -161,13 +163,13 @@
             cursor: pointer;
             font-weight: normal;
         }
-        
+
         .handedness-options input[type="radio"] {
             width: 18px;
             height: 18px;
             cursor: pointer;
         }
-        
+
         .required-indicator {
             color: #dc2626;
             margin-left: 2px;
@@ -187,27 +189,27 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        
+
         .btn-primary {
             background-color: #2563eb;
             color: white;
         }
-        
+
         .btn-primary:hover {
             background-color: #1d4ed8;
         }
-        
+
         .btn-primary:disabled {
             background-color: #93c5fd;
             cursor: not-allowed;
         }
-        
+
         .btn-secondary {
             background-color: #f3f4f6;
             color: #374151;
             margin-top: 10px;
         }
-        
+
         .btn-secondary:hover {
             background-color: #e5e7eb;
         }
@@ -223,7 +225,7 @@
             border-radius: 8px;
             margin-bottom: 20px;
         }
-        
+
         .consent-checkbox {
             display: flex;
             align-items: flex-start;
@@ -233,7 +235,7 @@
             background: #f8fafc;
             border-radius: 8px;
         }
-        
+
         .consent-checkbox input[type="checkbox"] {
             width: 20px;
             height: 20px;
@@ -241,7 +243,7 @@
             cursor: pointer;
             flex-shrink: 0;
         }
-        
+
         .consent-checkbox label {
             cursor: pointer;
             line-height: 1.5;
@@ -255,12 +257,12 @@
             text-align: center;
             padding: 40px 20px;
         }
-        
+
         .rejection-icon {
             font-size: 4em;
             margin-bottom: 20px;
         }
-        
+
         .rejection-message {
             font-size: 1.05em;
             color: #555;
@@ -268,7 +270,7 @@
             margin-bottom: 18px;
             text-align: left;
         }
-        
+
         .rejection-note {
             background: #fef3c7;
             border: 1px solid #f59e0b;
@@ -289,18 +291,18 @@
             gap: 8px;
             margin-bottom: 25px;
         }
-        
+
         .progress-step {
             width: 12px;
             height: 12px;
             border-radius: 50%;
             background: #e0e0e0;
         }
-        
+
         .progress-step.active {
             background: #2563eb;
         }
-        
+
         .progress-step.completed {
             background: #22c55e;
         }
@@ -317,12 +319,13 @@
             margin-bottom: 15px;
             display: none;
         }
-        
+
         .error-message.visible {
             display: block;
         }
     </style>
 </head>
+
 <body>
     <!-- ============================================================
          STEP 1: DEMOGRAPHICS
@@ -333,18 +336,18 @@
             <div class="progress-step"></div>
             <div class="progress-step"></div>
         </div>
-        
+
         <h1>Motor Learning Study</h1>
-        
+
         <div id="demographics-error" class="error-message"></div>
-        
+
         <div class="question">
             <label class="question-label">
                 1) Prolific ID <span class="required-indicator">*</span>
             </label>
             <input type="text" id="prolific-id" placeholder="Enter your Prolific ID" required>
         </div>
-        
+
         <div class="question">
             <label class="question-label">
                 2) What device are you using to control the cursor? <span class="required-indicator">*</span>
@@ -356,7 +359,7 @@
                 <option value="other">Other</option>
             </select>
         </div>
-        
+
         <div class="question">
             <label class="question-label">
                 3) Have you participated in this study before? <span class="required-indicator">*</span>
@@ -367,14 +370,14 @@
                 <option value="yes">Yes, I have done this before</option>
             </select>
         </div>
-        
+
         <div class="question">
             <label class="question-label">
                 4) Age <span class="required-indicator">*</span>
             </label>
             <input type="number" id="age" min="18" max="120" placeholder="Enter your age">
         </div>
-        
+
         <div class="question">
             <label class="question-label">
                 5) Gender <span class="required-indicator">*</span>
@@ -388,7 +391,7 @@
                 <option value="other">Other</option>
             </select>
         </div>
-        
+
         <button class="btn btn-primary" id="btn-to-handedness">Continue</button>
     </div>
 
@@ -401,19 +404,19 @@
             <div class="progress-step active"></div>
             <div class="progress-step"></div>
         </div>
-        
+
         <h1>Handedness Questionnaire</h1>
         <p class="blurb">
             Please indicate which hand you prefer to use for each of the following activities.
             <br><strong>Select the hand you would use if you had to choose one.</strong>
         </p>
-        
+
         <div id="handedness-error" class="error-message"></div>
-        
+
         <div class="handedness-grid" id="handedness-questions">
             <!-- Questions will be inserted here by JavaScript -->
         </div>
-        
+
         <button class="btn btn-primary" id="btn-to-consent">Continue</button>
         <button class="btn btn-secondary" id="btn-back-to-demographics">Back</button>
     </div>
@@ -427,28 +430,29 @@
             <div class="progress-step completed"></div>
             <div class="progress-step active"></div>
         </div>
-        
+
         <h1>Consent Form</h1>
-        
+
         <embed id="consent-pdf" src="consent_form.pdf#toolbar=0" type="application/pdf">
-        
+
         <div id="consent-error" class="error-message"></div>
-        
+
         <div class="consent-checkbox">
             <input type="checkbox" id="checkbox-age">
             <label for="checkbox-age">I am 18 years of age or older</label>
         </div>
-        
+
         <div class="consent-checkbox">
             <input type="checkbox" id="checkbox-read">
             <label for="checkbox-read">I have read and understand the information above</label>
         </div>
-        
+
         <div class="consent-checkbox">
             <input type="checkbox" id="checkbox-consent">
-            <label for="checkbox-consent">I want to participate in this research and continue with the Motor Learning Task</label>
+            <label for="checkbox-consent">I want to participate in this research and continue with the Motor Learning
+                Task</label>
         </div>
-        
+
         <button class="btn btn-primary" id="btn-start-game">Start Experiment</button>
         <button class="btn btn-secondary" id="btn-back-to-handedness">Back</button>
     </div>
@@ -458,30 +462,30 @@
          ============================================================ -->
     <div class="container hidden" id="step-instructions">
         <h1>Instructions</h1>
-        
+
         <div class="blurb">
             This experiment will take approximately <strong>30 minutes</strong>.
         </div>
-        
+
         <div class="blurb">
-            Please use your <span id="instruction-hand" class="highlight-blue"></span> hand 
+            Please use your <span id="instruction-hand" class="highlight-blue"></span> hand
             to control the mouse.
         </div>
 
         <div class="blurb">
-            You will control the fly's <span class="highlight-green">shadow</span>. 
+            You will control the fly's <span class="highlight-green">shadow</span>.
             Your goal is to follow the moving <span class="highlight-purple">fly</span> as closely as possible.
         </div>
-        
+
         <div class="blurb">
-            You will complete a series of trials. During some trials, the way your cursor responds 
+            You will complete a series of trials. During some trials, the way your cursor responds
             to your movements may gradually change.
         </div>
-        
+
         <div class="blurb">
             <strong>Try to adapt and stay as close to the fly as possible!</strong>
         </div>
-        
+
         <button class="btn btn-primary" id="btn-begin">Begin</button>
     </div>
 
@@ -492,25 +496,25 @@
         <div class="rejection-container">
             <div class="rejection-icon">🖱️</div>
             <h1>Mouse Required</h1>
-            
+
             <p class="rejection-message">
                 Thank you for your interest in our study!
             </p>
-            
+
             <p class="rejection-message">
-                Unfortunately, this experiment requires the use of a <strong>computer mouse</strong> 
-                to ensure accurate tracking of hand movements. Trackpads and other input devices 
+                Unfortunately, this experiment requires the use of a <strong>computer mouse</strong>
+                to ensure accurate tracking of hand movements. Trackpads and other input devices
                 can affect the precision of our measurements.
             </p>
-            
+
             <p class="rejection-message">
                 If you have access to a mouse, you're welcome to return and participate using that device.
             </p>
-            
+
             <div class="rejection-note">
                 <strong>Note:</strong> Your response has been recorded for our records.
             </div>
-            
+
             <p class="rejection-message">
                 You may now close this window. Thank you for your understanding!
             </p>
@@ -524,27 +528,28 @@
         <div class="rejection-container">
             <div class="rejection-icon">🙏</div>
             <h1>Thank You for Your Interest</h1>
-            
+
             <p class="rejection-message">
                 We really appreciate you taking the time to complete the questionnaire!
             </p>
-            
+
             <p class="rejection-message">
-                This particular study is investigating how people with <strong>strongly dominant hand preference</strong> 
-                learn new motor skills. To ensure valid results, we can only include participants who consistently 
+                This particular study is investigating how people with <strong>strongly dominant hand
+                    preference</strong>
+                learn new motor skills. To ensure valid results, we can only include participants who consistently
                 use the same hand for key everyday activities.
             </p>
-            
+
             <p class="rejection-message">
-                Based on your responses, your handedness pattern doesn't match our current recruitment criteria. 
+                Based on your responses, your handedness pattern doesn't match our current recruitment criteria.
                 This isn't a reflection on you — many people naturally use different hands for different tasks!
             </p>
-            
+
             <div class="rejection-note">
-                <strong>Please note:</strong> Your Prolific ID has been recorded. To maintain data integrity, 
+                <strong>Please note:</strong> Your Prolific ID has been recorded. To maintain data integrity,
                 you will not be able to retake this screening or participate in this study.
             </div>
-            
+
             <p class="rejection-message">
                 You may now close this window. Thank you again for your interest in our research!
             </p>
@@ -566,7 +571,7 @@
                 // Only allow these devices (others will be rejected)
                 allowedDevices: ['mouse']
             },
-            
+
             // ----------------------------------------------------------
             // HANDEDNESS FILTERING
             // ----------------------------------------------------------
@@ -574,12 +579,12 @@
                 // Which handedness to recruit: 'right', 'left', or 'both'
                 // Change this single value to switch recruitment mode
                 recruitingFor: 'right',
-                
+
                 // For LEFT-HANDED recruitment: 5 critical questions (subset)
                 criticalQuestionsLeft: [
                     'trackpad', 'writing', 'drawing', 'throwing', 'knife'
                 ],
-                
+
                 // For RIGHT-HANDED recruitment: ALL 16 questions (stricter)
                 criticalQuestionsRight: [
                     'writing', 'drawing', 'throwing', 'scissors', 'toothbrush',
@@ -587,20 +592,20 @@
                     'key', 'hammer', 'brush', 'cup'
                 ],
 
-                hand_to_use : 'left',
+                hand_to_use: 'right',
 
-                direction: 'CCW' // Direction of rotation in game
+                direction: 'CW' // Direction of rotation in game
             },
-            
+
             // ----------------------------------------------------------
             // FIREBASE SETTINGS
             // ----------------------------------------------------------
             firebase: {
-                experimentCollection: 'experiments_v2',
+                experimentCollection: 'experiments_abrupt',
                 statisticsDocument: 'study_statistics',
                 enabled: true
             },
-            
+
             // ----------------------------------------------------------
             // NAVIGATION
             // ----------------------------------------------------------
@@ -616,7 +621,7 @@
             const recruit_hand = CONFIG.handedness.recruitingFor;
             const use_hand = CONFIG.handedness.hand_to_use;
             const direction = CONFIG.handedness.direction;
-            const collection_name = `experiments_v2_${recruit_hand}_${use_hand}_${direction}`;
+            const collection_name = `${CONFIG.firebase.experimentCollection}_${recruit_hand}_${use_hand}_${direction}`;
 
             CONFIG.firebase.experimentCollection = collection_name;
             return collection_name;
@@ -688,7 +693,7 @@
             stepInstructions: document.getElementById('step-instructions'),
             stepRejected: document.getElementById('step-rejected'),
             stepRejectedDevice: document.getElementById('step-rejected-device'),
-            
+
             // Buttons
             btnToHandedness: document.getElementById('btn-to-handedness'),
             btnToConsent: document.getElementById('btn-to-consent'),
@@ -696,19 +701,19 @@
             btnBackToHandedness: document.getElementById('btn-back-to-handedness'),
             btnStartGame: document.getElementById('btn-start-game'),
             btnBegin: document.getElementById('btn-begin'),
-            
+
             // Inputs
             prolificId: document.getElementById('prolific-id'),
             inputDevice: document.getElementById('input-device'),
             playedBefore: document.getElementById('played-before'),
             age: document.getElementById('age'),
             gender: document.getElementById('gender'),
-            
+
             // Consent checkboxes
             checkboxAge: document.getElementById('checkbox-age'),
             checkboxRead: document.getElementById('checkbox-read'),
             checkboxConsent: document.getElementById('checkbox-consent'),
-            
+
             // Containers
             handednessQuestions: document.getElementById('handedness-questions'),
             // Error messages
@@ -741,27 +746,27 @@
             const playedBefore = elements.playedBefore.value;
             const age = elements.age.value;
             const gender = elements.gender.value;
-            
+
             if (!prolificId || !inputDevice || !playedBefore || !age || !gender) {
                 showError(elements.demographicsError, 'Please answer all questions before continuing.');
                 return false;
             }
-            
+
             if (parseInt(age) < 18) {
                 showError(elements.demographicsError, 'You must be 18 or older to participate.');
                 return false;
             }
-            
+
             // Store values
             state.demographics = { prolificId, inputDevice, playedBefore, age: parseInt(age), gender };
             hideError(elements.demographicsError);
             return true;
         }
-        
+
         function checkDeviceEligibility() {
             const { allowedDevices } = CONFIG.inputDevice;
             const device = state.demographics.inputDevice;
-            
+
             if (!allowedDevices.includes(device)) {
                 state.eligibility = {
                     isEligible: false,
@@ -781,14 +786,14 @@
                     return false;
                 }
             }
-            
+
             hideError(elements.handednessError);
             return true;
         }
 
         function determineEligibility() {
             const { recruitingFor, criticalQuestionsLeft, criticalQuestionsRight } = CONFIG.handedness;
-            
+
             // Select which critical questions to use based on recruitment mode
             let criticalQuestions;
             if (recruitingFor === 'left') {
@@ -799,13 +804,13 @@
                 // 'both' mode - use the smaller subset
                 criticalQuestions = criticalQuestionsLeft;
             }
-            
+
             // Get answers for critical questions
             const criticalAnswers = criticalQuestions.map(q => state.handedness[q]);
-            
+
             // Check if all critical answers are the same
             const allSame = criticalAnswers.every(a => a === criticalAnswers[0]);
-            
+
             if (!allSame) {
                 state.eligibility = {
                     isEligible: false,
@@ -814,9 +819,9 @@
                 };
                 return false;
             }
-            
+
             const dominantHand = criticalAnswers[0]; // 'left' or 'right'
-            
+
             // Check if matches recruitment criteria
             if (recruitingFor === 'both') {
                 state.eligibility = {
@@ -826,7 +831,7 @@
                 };
                 return true;
             }
-            
+
             if (dominantHand === recruitingFor) {
                 state.eligibility = {
                     isEligible: true,
@@ -835,7 +840,7 @@
                 };
                 return true;
             }
-            
+
             state.eligibility = {
                 isEligible: false,
                 dominantHand,
@@ -848,12 +853,12 @@
             const ageChecked = elements.checkboxAge.checked;
             const readChecked = elements.checkboxRead.checked;
             const consentChecked = elements.checkboxConsent.checked;
-            
+
             if (!ageChecked || !readChecked || !consentChecked) {
                 showError(elements.consentError, 'Please check all boxes to continue.');
                 return false;
             }
-            
+
             hideError(elements.consentError);
             return true;
         }
@@ -864,7 +869,7 @@
         function buildHandednessForm() {
             const container = elements.handednessQuestions;
             container.innerHTML = '';
-            
+
             HANDEDNESS_QUESTIONS.forEach(q => {
                 const item = document.createElement('div');
                 item.className = 'handedness-item';
@@ -881,14 +886,14 @@
                         </label>
                     </div>
                 `;
-                
+
                 // Add event listeners
                 item.querySelectorAll('input[type="radio"]').forEach(radio => {
                     radio.addEventListener('change', (e) => {
                         state.handedness[q.id] = e.target.value;
                     });
                 });
-                
+
                 container.appendChild(item);
             });
         }
@@ -900,26 +905,26 @@
             // Demographics -> Handedness (or rejection if wrong device)
             elements.btnToHandedness.addEventListener('click', async () => {
                 if (!validateDemographics()) return;
-                
+
                 // Check device eligibility first
                 if (!checkDeviceEligibility()) {
                     await recordStatistics();
                     showStep(elements.stepRejectedDevice);
                     return;
                 }
-                
+
                 showStep(elements.stepHandedness);
             });
-            
+
             // Handedness -> Consent (or Rejection)
             elements.btnToConsent.addEventListener('click', async () => {
                 if (!validateHandedness()) return;
-                
+
                 const isEligible = determineEligibility();
-                
+
                 // Record statistics
                 await recordStatistics();
-                
+
                 if (isEligible) {
                     // Upload participant data
                     await uploadParticipantData();
@@ -929,16 +934,16 @@
                     showStep(elements.stepRejected);
                 }
             });
-            
+
             // Back buttons
             elements.btnBackToDemographics.addEventListener('click', () => {
                 showStep(elements.stepDemographics);
             });
-            
+
             elements.btnBackToHandedness.addEventListener('click', () => {
                 showStep(elements.stepHandedness);
             });
-            
+
             // Consent -> Instructions
             elements.btnStartGame.addEventListener('click', () => {
                 if (validateConsent()) {
@@ -947,7 +952,7 @@
                     showStep(elements.stepInstructions);
                 }
             });
-            
+
             // Instructions -> Game
             elements.btnBegin.addEventListener('click', () => {
                 localStorage.setItem('prolificId', state.demographics.prolificId);
@@ -967,14 +972,14 @@
                 console.log('Firebase upload disabled or not authenticated');
                 return;
             }
-            
+
             try {
                 const { db, auth, doc, setDoc, Timestamp } = firebaseRefs;
                 const oderId = `${state.demographics.prolificId}_${auth.currentUser.uid}`;
-                
+
                 // Create participant document
                 const participantRef = doc(db, CONFIG.firebase.experimentCollection, oderId);
-                
+
                 await setDoc(participantRef, {
                     oderId,
                     visitorUid: auth.currentUser.uid,
@@ -988,7 +993,7 @@
                     },
                     createdAt: Timestamp.fromDate(new Date())
                 }, { merge: true });
-                
+
                 console.log('Participant data uploaded successfully');
             } catch (error) {
                 console.error('Error uploading participant data:', error);
@@ -1000,11 +1005,11 @@
                 console.log('Firebase upload disabled or not authenticated');
                 return;
             }
-            
+
             try {
                 const { db, doc, setDoc, getDoc, Timestamp, increment } = firebaseRefs;
                 const statsRef = doc(db, CONFIG.firebase.experimentCollection, CONFIG.firebase.statisticsDocument);
-                
+
                 // Get current stats or create new
                 const statsSnap = await getDoc(statsRef);
                 const currentStats = statsSnap.exists() ? statsSnap.data() : {
@@ -1024,13 +1029,13 @@
                     rejectionReasons: {},
                     submissions: []
                 };
-                
+
                 // Update stats
                 currentStats.totalSubmissions++;
-                
+
                 const hand = state.eligibility.dominantHand || 'mixed';
                 const device = state.demographics.inputDevice;
-                
+
                 // Initialize if needed
                 if (!currentStats.byHandedness[hand]) {
                     currentStats.byHandedness[hand] = { total: 0, eligible: 0, rejected: 0 };
@@ -1038,22 +1043,22 @@
                 if (!currentStats.byInputDevice[device]) {
                     currentStats.byInputDevice[device] = 0;
                 }
-                
+
                 currentStats.byHandedness[hand].total++;
                 currentStats.byInputDevice[device]++;
-                
+
                 if (state.eligibility.isEligible) {
                     currentStats.eligibleCount++;
                     currentStats.byHandedness[hand].eligible++;
                 } else {
                     currentStats.rejectedCount++;
                     currentStats.byHandedness[hand].rejected++;
-                    
+
                     // Track rejection reasons
                     const reason = state.eligibility.reason;
                     currentStats.rejectionReasons[reason] = (currentStats.rejectionReasons[reason] || 0) + 1;
                 }
-                
+
                 // Add submission record (keep last 1000)
                 currentStats.submissions.push({
                     prolificId: state.demographics.prolificId,
@@ -1063,15 +1068,15 @@
                     eligible: state.eligibility.isEligible,
                     reason: state.eligibility.reason
                 });
-                
+
                 if (currentStats.submissions.length > 1000) {
                     currentStats.submissions = currentStats.submissions.slice(-1000);
                 }
-                
+
                 currentStats.lastUpdated = Timestamp.fromDate(new Date());
-                
+
                 await setDoc(statsRef, currentStats);
-                
+
                 console.log('Statistics recorded successfully');
             } catch (error) {
                 console.error('Error recording statistics:', error);
@@ -1099,7 +1104,7 @@
         import { signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
         const { db, auth } = initializeFirebase();
-        
+
         // Store Firebase references
         firebaseRefs.db = db;
         firebaseRefs.auth = auth;
@@ -1107,7 +1112,7 @@
         firebaseRefs.setDoc = setDoc;
         firebaseRefs.getDoc = getDoc;
         firebaseRefs.Timestamp = Timestamp;
-        
+
         // Sign in anonymously
         signInAnonymously(auth)
             .then(() => {
@@ -1118,4 +1123,5 @@
             });
     </script>
 </body>
+
 </html>

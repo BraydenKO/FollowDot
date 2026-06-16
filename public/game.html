@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +9,7 @@
         * {
             box-sizing: border-box;
         }
-        
+
         body {
             margin: 0;
             overflow: hidden;
@@ -16,7 +17,7 @@
             cursor: none;
             font-family: system-ui, -apple-system, sans-serif;
         }
-        
+
         .dot {
             position: absolute;
             pointer-events: none;
@@ -27,25 +28,25 @@
             background-repeat: no-repeat;
             border: none;
         }
-        
+
         .user-dot {
             background-image: url('shadow.png');
             width: 50px;
             height: 50px;
         }
-        
+
         .user-dot.close {
             background-image: url('shadow_green.png');
             width: 60px;
             height: 60px;
         }
-        
+
         .fly-dot {
             background-image: url('fly.png');
             width: 50px;
             height: 50px;
         }
-        
+
         /* Modal Styles */
         .modal-overlay {
             position: fixed;
@@ -57,11 +58,11 @@
             z-index: 1000;
             cursor: auto;
         }
-        
+
         .modal-overlay.hidden {
             display: none;
         }
-        
+
         .modal {
             background: white;
             padding: 30px 25px 70px;
@@ -70,16 +71,16 @@
             width: 340px;
             max-width: 90vw;
             position: relative;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
         }
-        
+
         .modal p {
             margin: 0 0 20px;
             font-size: 16px;
             line-height: 1.5;
             color: #333;
         }
-        
+
         .modal-button {
             padding: 12px 28px;
             background: #2563eb;
@@ -95,7 +96,7 @@
             transform: translateX(-50%);
             transition: background 0.2s;
         }
-        
+
         .modal-button:hover {
             background: #1d4ed8;
         }
@@ -130,7 +131,7 @@
             font-weight: 600;
             margin-bottom: 12px;
         }
-        
+
         /* HUD Elements */
         .trial-counter {
             position: fixed;
@@ -142,7 +143,7 @@
             font-weight: bold;
             z-index: 100;
         }
-        
+
         .trial-counter.uploading {
             top: 10px;
             left: 50%;
@@ -152,7 +153,7 @@
             text-align: center;
             max-width: 80%;
         }
-        
+
         .countdown-timer {
             position: fixed;
             top: 10px;
@@ -166,16 +167,17 @@
             border-radius: 6px;
             z-index: 100;
         }
-        
+
         .countdown-timer.hidden {
             display: none;
         }
     </style>
 </head>
+
 <body>
     <div class="dot user-dot" id="userDot"></div>
     <div class="dot fly-dot" id="flyDot"></div>
-    
+
     <!-- Standard modal (for trial complete, transitions, etc.) -->
     <div class="modal-overlay hidden" id="modal">
         <div class="modal">
@@ -194,7 +196,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="countdown-timer hidden" id="countdownTimer"></div>
     <div class="trial-counter" id="trialCounter">0</div>
 
@@ -204,39 +206,39 @@
         // ============================================================
         const CONFIG = {
             perturbation: {
-                degreesPerTrial: -1,
-                maxDegrees: -30,
+                degreesPerTrial: 30,
+                maxDegrees: 30,
             },
 
             trials: {
                 baseline: 16,
-                rampUp: 30,
-                hold: 6,
+                rampUp: 0,
+                hold: 36,
                 aftereffect: 4,
             },
-            
+
             durations: {
                 trialLength: 30000
             },
-            
+
             sampling: {
                 rate: 20,
                 dt: 2000
             },
-            
+
             proximity: {
                 closeDistance: 100
             },
-            
+
             countdown: {
                 duration: 0.5
             },
-            
+
             upload: {
                 enabled: true,
                 showUploadStatus: true
             },
-            
+
             messages: {
                 get handVerification() {
                     const hand = localStorage.getItem('hand_to_use') || "RIGHT";
@@ -252,13 +254,13 @@
                 holdToAftereffect: "Great job! Now your controls are back to normal. Click OK to continue.",
                 uploading: "Please wait for data to be processed and uploaded..."
             },
-            
+
             navigation: {
                 requireConsent: true,
                 consentPage: "index.html",
                 completionPage: "done.html"
             },
-            
+
             firebase: {
                 experimentCollection: localStorage.getItem('collection_name'),
                 trialsSubcollection: "trials",
@@ -469,7 +471,7 @@
             const phi = [];
             for (let i = 0; i < 7; i++) {
                 // Use seededRandom() instead of Math.random() so that it's constant across users
-                phi.push(seededRandom() * 2 * Math.PI - Math.PI); 
+                phi.push(seededRandom() * 2 * Math.PI - Math.PI);
             }
             return phi;
         }
@@ -874,4 +876,5 @@
         initialize();
     </script>
 </body>
+
 </html>
