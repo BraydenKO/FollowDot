@@ -93,7 +93,8 @@
         }
 
         .popup.wide {
-            width: 850px;
+            width: 1000px;
+            max-width: 95vw;
         }
 
         .popup.hidden {
@@ -279,7 +280,12 @@
             width: 100%;
             aspect-ratio: 1;
             object-fit: contain;
-            padding: 10px;
+            padding: 4px;
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .image-option:hover img {
+            transform: scale(1.1);
         }
 
         .image-label {
@@ -760,6 +766,11 @@
         // FIREBASE UPLOAD
         // ============================================================
         async function uploadSurveyResponses() {
+            if (window.location.search.includes('preview=true')) {
+                alert('Preview mode: Survey submitted successfully! (No database writes were performed)');
+                console.log('Survey State:', surveyState);
+                return;
+            }
             const { db, auth, doc, setDoc, Timestamp, collection } = firebaseRefs;
             
             if (!CONFIG.upload.enabled || !auth || !auth.currentUser) {
@@ -941,6 +952,13 @@
         // INITIALIZATION (called after DOM loads)
         // ============================================================
         function initializePage() {
+            if (window.location.search.includes('preview=true')) {
+                console.log('Preview mode active: Skipping charts render, showing survey popup directly.');
+                document.getElementById('overlay').classList.remove('hidden');
+                // Start directly at question 3 to preview the image grid
+                showPopup('question3');
+                return;
+            }
             renderCharts();
             // Show first question
             document.getElementById('question1').classList.remove('hidden');
@@ -970,6 +988,9 @@
         // EXIT CONFIRMATION
         // ============================================================
         document.addEventListener('click', async (event) => {
+            if (window.location.search.includes('preview=true')) {
+                return; // Disable exit confirmation in preview mode
+            }
             // Allow button clicks
             if (event.target.tagName === 'BUTTON' || event.target.closest('button')) {
                 return;
