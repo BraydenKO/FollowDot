@@ -171,6 +171,101 @@
         .countdown-timer.hidden {
             display: none;
         }
+
+        /* Admin Dev Panel Styles */
+        .admin-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            color: #f8fafc;
+            font-family: inherit;
+            z-index: 9999;
+            width: 320px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+            overflow: hidden;
+            font-size: 13px;
+            cursor: auto;
+        }
+        .admin-panel.collapsed {
+            width: 140px;
+            height: 40px;
+            background: rgba(15, 23, 42, 0.85);
+        }
+        .admin-panel-header {
+            padding: 10px 15px;
+            background: rgba(30, 41, 59, 0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            user-select: none;
+        }
+        .admin-panel-body {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .admin-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .admin-input-group label {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+        .admin-input-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .admin-input {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            padding: 6px 10px;
+            color: white;
+            font-size: 13px;
+            width: 100%;
+        }
+        .admin-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        .admin-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: background 0.2s;
+            text-align: center;
+            width: 100%;
+        }
+        .admin-btn:hover {
+            background: #1d4ed8;
+        }
+        .admin-btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+        }
+        .admin-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
     </style>
 </head>
 
@@ -197,6 +292,23 @@
         </div>
     </div>
 
+    <!-- Dial modal for pre-washout stage questionnaire -->
+    <div class="modal-overlay hidden" id="dialModal">
+        <div class="modal" style="width: 450px; padding: 25px 25px 20px;">
+            <p id="dialQuestion" style="font-weight: 600; font-size: 16px; margin-bottom: 8px;">
+                In the next trials, if the fly is on the right, which direction should you move your mouse to reach it?
+            </p>
+            <p style="font-size: 14px; color: #555; margin-top: 0; margin-bottom: 15px;">
+                Click and drag the dial to point in the correct direction.
+            </p>
+            <div style="display: flex; justify-content: center; margin: 15px 0;">
+                <canvas id="dialCanvas" width="240" height="240" style="border: 1px solid #ccc; border-radius: 50%; background: #fafafa; cursor: pointer;"></canvas>
+            </div>
+            <p id="dialFeedback" style="font-size: 14px; font-weight: bold; min-height: 20px; color: #dc2626; margin: 10px 0;"></p>
+            <button class="modal-button" id="dialSubmitBtn" style="position: relative; bottom: 0; left: 0; transform: none; margin: 10px auto 0; display: block;">Submit Answer</button>
+        </div>
+    </div>
+
     <div class="countdown-timer hidden" id="countdownTimer"></div>
     <div class="trial-counter" id="trialCounter">0</div>
 
@@ -206,8 +318,8 @@
         // ============================================================
         const CONFIG = {
             perturbation: {
-                degreesPerTrial: -30,
-                maxDegrees: -30,
+                degreesPerTrial: 30,
+                maxDegrees: 30,
             },
 
             trials: {
@@ -223,7 +335,7 @@
 
             sampling: {
                 rate: 20,
-                dt: 2000
+                dt: 1000
             },
 
             proximity: {
@@ -234,6 +346,14 @@
                 duration: 0.5
             },
 
+            feedback: {
+                // Applies to baseline/rampUp/hold trials (aftereffect is always no-feedback).
+                // 0 = every trial has feedback (cursor always visible).
+                // 1 = no trial has feedback (cursor never visible).
+                // N >= 2 = every Nth trial (1-indexed within the phase) has no feedback.
+                noFeedbackEveryN: 2
+            },
+
             upload: {
                 enabled: true,
                 showUploadStatus: true
@@ -242,7 +362,7 @@
             messages: {
                 get handVerification() {
                     const hand = localStorage.getItem('hand_to_use') || "RIGHT";
-                    return `You will be using your <strong>${hand.toUpperCase()}</strong> hand for this experiment.<br><br>Which hand is on the mouse <strong>right now</strong>?`;
+                    return `You will be using your <strong>${hand.toUpperCase()}</strong> hand for this experiment. On some trials, your cursor may disappear; that is expected, keep aiming towards the fly.<br><br>Which hand is on the mouse <strong>right now</strong>?`;
                 },
                 get wrongHand() {
                     const hand = localStorage.getItem('hand_to_use') || "RIGHT";
@@ -251,7 +371,7 @@
                 trialComplete: "Good job! Click OK to continue the game.",
                 baselineToRamp: "Great job! The controls may start to feel different. Try to adapt as you go. Click OK to continue.",
                 rampToHold: "Great job! Keep going! Click OK to continue.",
-                holdToAftereffect: "Great job! Now your controls are back to normal. Click OK to continue.",
+                holdToAftereffect: "Great job! Now your controls are back to normal. Your cursor will disappear during these next trials, try your best to aim directly toward the fly. Click OK to continue.",
                 uploading: "Please wait for data to be processed and uploaded..."
             },
 
@@ -289,8 +409,12 @@
                 x: [2.31, 2.31, 2.31, 1.76, 1.30, 0.97, 0.73]
             },
             frequencies: {
-                y: [0.1, 0.25, 0.55, 0.85, 1.15, 1.55, 2.05],
-                x: [0.15, 0.35, 0.65, 0.95, 1.45, 1.85, 2.15]
+                // Halved relative to game_old.html: that version used dt=2000, which
+                // implicitly halved these frequencies (t advanced at half the real-time
+                // rate). Now that dt=1000 makes t track real seconds, the constants are
+                // halved here so the fly moves at the same actual speed as before.
+                y: [0.05, 0.125, 0.275, 0.425, 0.575, 0.775, 1.025],
+                x: [0.075, 0.175, 0.325, 0.475, 0.725, 0.925, 1.075]
             },
             scaleFactors: {
                 y: { base: 40, smallScreenRatios: [0.2, 0.2, 0.2, 0.15, 0.11, 0.08, 0.06] },
@@ -307,7 +431,8 @@
                 width: window.screen.width,
                 height: window.screen.height
             },
-            user: { x: 0, y: 0 },
+            user: { x: 0, y: 0 }, // Unclamped (virtual) position
+            realUser: { x: 0, y: 0 }, // Clamped (on-screen) position
             fly: { x: 0, y: 0 },
             currentPhase: "baseline",
             currentRotationDegrees: 0,
@@ -327,7 +452,16 @@
             animationFrame: null,
             recordingInterval: null,
             currentMouseHandler: null,
-            canNavigate: true
+            canNavigate: true,
+            dialTries: 0,
+            currentDialAngle: 0,
+            isPlaying: false,
+            // Whether the current trial has a visible cursor. Drives which
+            // position basis counts as "where the user believes their cursor
+            // is": realUser (clamped, matches what's rendered) when the dot is
+            // visible, user (unclamped) when it's hidden and there's nothing
+            // on screen to anchor a belief to.
+            currentHasFeedback: true
         };
 
         // ============================================================
@@ -367,7 +501,11 @@
             btnLeft: document.getElementById('btnLeft'),
             btnRight: document.getElementById('btnRight'),
             countdownTimer: document.getElementById('countdownTimer'),
-            trialCounter: document.getElementById('trialCounter')
+            trialCounter: document.getElementById('trialCounter'),
+            dialModal: document.getElementById('dialModal'),
+            dialCanvas: document.getElementById('dialCanvas'),
+            dialFeedback: document.getElementById('dialFeedback'),
+            dialSubmitBtn: document.getElementById('dialSubmitBtn')
         };
 
         // ============================================================
@@ -392,6 +530,8 @@
         // ============================================================
         function checkConsent() {
             if (!CONFIG.navigation.requireConsent) return;
+            // Admins can hit game.html directly to test, without redoing consent each time.
+            if (localStorage.getItem('prolificId') === 'admin') return;
             if (sessionStorage.getItem('gameStarted') !== 'true') {
                 window.location.href = CONFIG.navigation.consentPage;
             } else {
@@ -410,6 +550,7 @@
         }
 
         function showCursor() {
+            pointerLockShouldBeActive = false;
             document.body.style.cursor = 'auto';
             if (document.pointerLockElement) document.exitPointerLock();
         }
@@ -418,11 +559,44 @@
             document.body.style.cursor = 'none';
         }
 
+        // Tracks whether the trial scheduler currently wants the cursor locked.
+        // Without pointer lock, the real OS cursor is physically capped at the
+        // monitor edge, so movementX/Y genuinely stop at the border — there's no
+        // delta left to extrapolate from. With lock held, the OS cursor is never
+        // constrained by screen geometry, so state.user (already unclamped, see
+        // mouseHandlers below) keeps accumulating real input past the visible
+        // edge instead of just running out of input to track.
+        let pointerLockShouldBeActive = false;
+
         function requestPointerLock() {
+            pointerLockShouldBeActive = true;
             const body = document.body;
             body.requestPointerLock = body.requestPointerLock || body.mozRequestPointerLock || body.webkitRequestPointerLock;
             if (body.requestPointerLock) body.requestPointerLock();
         }
+
+        // Browsers can report a large spurious movementX/Y on the first mousemove
+        // event right after pointer lock engages (the cursor "warps" to the lock
+        // anchor). Since state.user is now unclamped, that single bogus delta used
+        // to permanently shove the virtual position off-screen, pinning the dot to
+        // a clamped edge (e.g. top-left) for the rest of the trial. Discard the
+        // first delta after every lock acquisition to neutralize it.
+        let ignoreNextMouseDelta = false;
+        document.addEventListener('pointerlockchange', () => {
+            if (document.pointerLockElement === document.body) {
+                ignoreNextMouseDelta = true;
+            } else if (pointerLockShouldBeActive) {
+                // Lock dropped unexpectedly mid-trial (e.g. OS/browser revoked it).
+                // Re-acquire immediately so movement tracking doesn't degrade into
+                // being capped by the real screen edge. Browsers may briefly refuse
+                // re-acquisition right after an Escape-triggered exit; that's fine,
+                // this is a best-effort recovery, not a hard requirement.
+                requestPointerLock();
+            }
+        });
+        document.addEventListener('pointerlockerror', () => {
+            console.warn('Pointer lock request failed');
+        });
 
         // ============================================================
         // MOUSE MOVEMENT HANDLERS
@@ -432,30 +606,42 @@
         }
 
         const mouseHandlers = {
+            // state.realUser accumulates its own deltas and clamps in place every
+            // frame (like the old single-variable model) so the displayed dot
+            // always tracks the hand 1:1, even right at the screen edge. state.user
+            // accumulates the same deltas with no clamping at all, purely for the
+            // data log. They're deliberately independent: if realUser were instead
+            // derived as clamp(user) each frame, then while user drifts far past
+            // the edge the dot would sit frozen with no feedback, and reversing
+            // direction would "pay off" that whole invisible backlog in one frame
+            // the instant user crosses back in — a visible jump instead of a
+            // smooth return.
             normal(e) {
+                if (ignoreNextMouseDelta) { ignoreNextMouseDelta = false; return; }
                 const { width, height } = state.screen;
                 state.user.x += e.movementX;
                 state.user.y += e.movementY;
-                state.user.x = Math.max(0, Math.min(width, state.user.x));
-                state.user.y = Math.max(0, Math.min(height, state.user.y));
+                state.realUser.x = Math.max(0, Math.min(width, state.realUser.x + e.movementX));
+                state.realUser.y = Math.max(0, Math.min(height, state.realUser.y + e.movementY));
                 updateUserDotPosition();
             },
             rotate(e) {
+                if (ignoreNextMouseDelta) { ignoreNextMouseDelta = false; return; }
                 const { width, height } = state.screen;
                 const radians = degreesToRadians(state.currentRotationDegrees);
                 const rotatedDeltaX = e.movementX * Math.cos(radians) - e.movementY * Math.sin(radians);
                 const rotatedDeltaY = e.movementX * Math.sin(radians) + e.movementY * Math.cos(radians);
                 state.user.x += rotatedDeltaX;
                 state.user.y += rotatedDeltaY;
-                state.user.x = Math.max(0, Math.min(width, state.user.x));
-                state.user.y = Math.max(0, Math.min(height, state.user.y));
+                state.realUser.x = Math.max(0, Math.min(width, state.realUser.x + rotatedDeltaX));
+                state.realUser.y = Math.max(0, Math.min(height, state.realUser.y + rotatedDeltaY));
                 updateUserDotPosition();
             }
         };
 
         function updateUserDotPosition() {
-            elements.userDot.style.left = `${state.user.x}px`;
-            elements.userDot.style.top = `${state.user.y}px`;
+            elements.userDot.style.left = `${state.realUser.x}px`;
+            elements.userDot.style.top = `${state.realUser.y}px`;
         }
 
         function setMouseHandler(useRotation) {
@@ -500,7 +686,8 @@
         // DISTANCE CALCULATIONS
         // ============================================================
         function getDistance() {
-            return Math.sqrt(Math.pow(state.user.x - state.fly.x, 2) + Math.pow(state.user.y - state.fly.y, 2));
+            const pos = state.currentHasFeedback ? state.realUser : state.user;
+            return Math.sqrt(Math.pow(pos.x - state.fly.x, 2) + Math.pow(pos.y - state.fly.y, 2));
         }
 
         function calculateDistancePercentages(distances) {
@@ -527,14 +714,37 @@
         // ============================================================
         // MODAL SYSTEM
         // ============================================================
+        class TrialAbortError extends Error {
+            constructor() {
+                super("Trial aborted/skipped");
+                this.name = "TrialAbortError";
+            }
+        }
+
+        let activeReject = null;
+        let activeTimeout = null;
+
+        function interruptableWait(ms) {
+            return new Promise((resolve, reject) => {
+                activeReject = reject;
+                activeTimeout = setTimeout(() => {
+                    activeReject = null;
+                    activeTimeout = null;
+                    resolve();
+                }, ms);
+            });
+        }
+
         function showModal(message) {
-            return new Promise(resolve => {
+            return new Promise((resolve, reject) => {
+                activeReject = reject;
                 elements.modalMessage.innerHTML = message;
                 elements.modal.classList.remove('hidden');
                 showCursor();
                 const handleClick = () => {
                     elements.modalButton.removeEventListener('click', handleClick);
                     hideModal();
+                    activeReject = null;
                     resolve();
                 };
                 elements.modalButton.addEventListener('click', handleClick);
@@ -600,7 +810,8 @@
         // COUNTDOWN TIMER
         // ============================================================
         function showCountdown(seconds) {
-            return new Promise(resolve => {
+            return new Promise((resolve, reject) => {
+                activeReject = reject;
                 let remaining = seconds;
                 elements.countdownTimer.textContent = `${remaining}s`;
                 elements.countdownTimer.classList.remove('hidden');
@@ -609,11 +820,19 @@
                     if (remaining <= 0) {
                         clearInterval(interval);
                         elements.countdownTimer.classList.add('hidden');
+                        activeReject = null;
                         resolve();
                     } else {
                         elements.countdownTimer.textContent = `${remaining}s`;
                     }
                 }, 100);
+
+                activeTimeout = {
+                    clear: () => {
+                        clearInterval(interval);
+                        elements.countdownTimer.classList.add('hidden');
+                    }
+                };
             });
         }
 
@@ -624,7 +843,14 @@
             state.recordingInterval = setInterval(() => {
                 const time = Date.now();
                 state.currentTrialData.userPositions.push({
-                    x: state.user.x, y: state.user.y,
+                    // Feedback trial: x/y = realUser (clamped) — matches the dot the
+                    // participant actually saw, i.e. where they believe their cursor is.
+                    // No-feedback trial: x/y = user (unclamped) — nothing was rendered,
+                    // so the raw tracked movement is the best estimate of where they
+                    // were aiming. rx/ry always holds the true clamped on-screen value.
+                    x: state.currentHasFeedback ? state.realUser.x : state.user.x,
+                    y: state.currentHasFeedback ? state.realUser.y : state.user.y,
+                    rx: state.realUser.x, ry: state.realUser.y,
                     phase: state.currentPhase,
                     rotationDegrees: state.currentRotationDegrees,
                     timestamp: time
@@ -652,7 +878,8 @@
                 phis: state.phis[state.phis.length - 1],
                 phase: state.currentPhase,
                 rotationDegrees: state.currentRotationDegrees,
-                phaseTrialIndex: state.phaseTrialIndex
+                phaseTrialIndex: state.phaseTrialIndex,
+                hasFeedback: state.currentHasFeedback
             };
             state.allDistances.push(state.currentTrialData.distances);
             state.currentTrialData = { userPositions: [], flyPositions: [], distances: [], rotationDegrees: 0 };
@@ -728,9 +955,12 @@
         }
 
         function pauseGame(hideUser = true) {
+            pointerLockShouldBeActive = false;
             cancelAnimationFrame(state.animationFrame);
             state.user.x = state.screen.width / 2;
             state.user.y = state.screen.height / 2;
+            state.realUser.x = state.screen.width / 2;
+            state.realUser.y = state.screen.height / 2;
             updateUserDotPosition();
             if (hideUser) elements.userDot.style.visibility = 'hidden';
             if (document.pointerLockElement) document.exitPointerLock();
@@ -761,57 +991,434 @@
         }
 
         // ============================================================
-        // TRIAL MANAGEMENT
+        // TRIAL SCHEDULER & QUEUE
         // ============================================================
-        async function runSingleTrial() {
+        function computeHasFeedback(phaseTrialIndex) {
+            const { noFeedbackEveryN } = CONFIG.feedback;
+            if (!noFeedbackEveryN || noFeedbackEveryN <= 0) return true; // 0 = always feedback
+            return (phaseTrialIndex + 1) % noFeedbackEveryN !== 0;
+        }
+
+        let trialQueue = [];
+        function buildTrialQueue() {
+            trialQueue = [];
+            const phases = [
+                { name: "baseline", count: CONFIG.trials.baseline, next: "rampUp", msg: CONFIG.messages.baselineToRamp },
+                { name: "rampUp", count: CONFIG.trials.rampUp, next: "hold", msg: CONFIG.messages.rampToHold },
+                { name: "hold", count: CONFIG.trials.hold, next: "aftereffect", msg: CONFIG.messages.holdToAftereffect },
+                { name: "aftereffect", count: CONFIG.trials.aftereffect, next: "done", msg: "" }
+            ];
+            let globalIndex = 0;
+            phases.forEach(p => {
+                for (let i = 0; i < p.count; i++) {
+                    let hasFeedback = true;
+                    if (p.name === "baseline" || p.name === "rampUp" || p.name === "hold") {
+                        hasFeedback = computeHasFeedback(i);
+                    } else if (p.name === "aftereffect") {
+                        hasFeedback = false;
+                    }
+                    trialQueue.push({
+                        globalIndex: globalIndex++,
+                        phase: p.name,
+                        phaseTrialIndex: i,
+                        hasFeedback,
+                        isLastOfPhase: (i === p.count - 1),
+                        nextPhase: p.next,
+                        transitionMessage: p.msg
+                    });
+                }
+            });
+        }
+
+        async function runSingleTrialFlow(trial) {
+            state.isPlaying = true;
+            state.trialsRemaining = trialQueue.length - state.trialIndex;
             elements.trialCounter.textContent = state.trialsRemaining;
+            
+            state.currentHasFeedback = trial.hasFeedback;
+            updateRotationForPhase(trial.phase, trial.phaseTrialIndex);
+            setMouseHandler(state.currentRotationDegrees != 0);
+
+            const phi = generatePhi();
+            state.phis.push(phi);
+            placeFlyAtStart();
+
+            state.user.x = state.screen.width / 2;
+            state.user.y = state.screen.height / 2;
+            state.realUser.x = state.screen.width / 2;
+            state.realUser.y = state.screen.height / 2;
+            updateUserDotPosition();
+
+            // Set up countdown
+            const delay = trial.hasFeedback ? CONFIG.countdown.duration : CONFIG.countdown.duration * 2;
+            elements.userDot.style.visibility = 'visible';
+            await showCountdown(delay);
+
+            // Start trial
+            elements.userDot.style.visibility = trial.hasFeedback ? 'visible' : 'hidden';
+            requestPointerLock();
+            startRecording();
             state.trialStartTime = Date.now();
-            await new Promise(resolve => setTimeout(resolve, CONFIG.durations.trialLength));
+            
+            gameLoop(state.phis[state.phis.length - 1]);
+
+            await interruptableWait(CONFIG.durations.trialLength);
+
             pauseGame();
             stopRecording();
             saveTrialData();
-            state.trialsRemaining--;
-        }
+            state.isPlaying = false;
 
-        async function runPhase(phase, trialCount, nextPhase, transitionMessage) {
-            state.currentPhase = phase;
-            state.phaseTrialIndex = 0;
-            const phaseStartIndex = state.trialIndex;
-            for (let i = 0; i < trialCount; i++) {
-                updateRotationForPhase(phase, i);
-                setMouseHandler(state.currentRotationDegrees != 0);
-                const phi = generatePhi();
-                state.phis.push(phi);
-                placeFlyAtStart();
-                state.user.x = state.screen.width / 2;
-                state.user.y = state.screen.height / 2;
-                updateUserDotPosition();
-                elements.userDot.style.visibility = 'visible';
-                await showCountdown(CONFIG.countdown.duration);
-                requestPointerLock();
-                startRecording();
-                resumeGame(false);
-                await runSingleTrial();
-                const isLastTrialOfPhase = i === trialCount - 1;
-                if (isLastTrialOfPhase) {
-                    await uploadPhaseData(phase, phaseStartIndex, state.trialIndex);
-                    if (nextPhase !== "done") await showModal(transitionMessage);
+            const nextTrial = trialQueue[state.trialIndex]; // Note: saveTrialData increments state.trialIndex
+
+            if (trial.phase === "hold" && nextTrial && nextTrial.phase === "aftereffect") {
+                const phaseStartIndex = trialQueue.findIndex(t => t.phase === trial.phase);
+                await uploadPhaseData(trial.phase, phaseStartIndex, state.trialIndex);
+                await showModal(CONFIG.messages.holdToAftereffect);
+                await showDialModal();
+            } else if (trial.isLastOfPhase) {
+                const phaseStartIndex = trialQueue.findIndex(t => t.phase === trial.phase);
+                await uploadPhaseData(trial.phase, phaseStartIndex, state.trialIndex);
+                if (trial.nextPhase !== "done") {
+                    await showModal(trial.transitionMessage);
+                }
+            } else {
+                if (nextTrial && !nextTrial.hasFeedback && nextTrial.phase !== "aftereffect") {
+                    await showModal("Good job! On the next trial, you won't see your cursor. Do your best to aim towards the fly.");
                 } else {
                     await showModal(CONFIG.messages.trialComplete);
                 }
             }
-            return nextPhase;
         }
 
         async function runGame() {
-            const { trials, messages } = CONFIG;
-            state.trialsRemaining = trials.baseline + trials.rampUp + trials.hold + trials.aftereffect;
-            await runPhase("baseline", trials.baseline, "rampUp", messages.baselineToRamp);
-            await runPhase("rampUp", trials.rampUp, "hold", messages.rampToHold);
-            await runPhase("hold", trials.hold, "aftereffect", messages.holdToAftereffect);
-            await runPhase("aftereffect", trials.aftereffect, "done", "");
-            state.currentPhase = "done";
-            finishGame();
+            try {
+                buildTrialQueue();
+                state.trialsRemaining = trialQueue.length - state.trialIndex;
+
+                while (state.trialIndex < trialQueue.length) {
+                    const trial = trialQueue[state.trialIndex];
+                    state.currentPhase = trial.phase;
+                    state.phaseTrialIndex = trial.phaseTrialIndex;
+                    
+                    await runSingleTrialFlow(trial);
+                }
+
+                state.currentPhase = "done";
+                finishGame();
+            } catch (error) {
+                if (error instanceof TrialAbortError) {
+                    console.log("Game loop aborted. Restarting at trialIndex:", state.trialIndex);
+                    setTimeout(() => {
+                        runGame();
+                    }, 0);
+                } else {
+                    console.error("Game loop error:", error);
+                    throw error;
+                }
+            }
+        }
+
+        // ============================================================
+        // DIAL MODAL & SAVE ATTEMPTS
+        // ============================================================
+        async function saveDialTriesToFirebase() {
+            if (!CONFIG.upload.enabled || !auth?.currentUser) return;
+            try {
+                const { doc, setDoc } = window.firebaseModules;
+                const { experimentCollection } = CONFIG.firebase;
+                const oderId = `${prolificId}_${auth.currentUser.uid}`;
+                const userDocRef = doc(db, experimentCollection, oderId);
+                await setDoc(userDocRef, {
+                    dialTries: state.dialTries
+                }, { merge: true });
+                console.log("Dial tries saved to Firebase successfully:", state.dialTries);
+            } catch (error) {
+                console.error("Error saving dial tries to Firebase:", error);
+            }
+        }
+
+        function showDialModal() {
+            return new Promise(resolve => {
+                state.dialTries = 0;
+                state.currentDialAngle = -Math.PI / 2; // Point straight up initially
+                let showCorrectDirection = false;
+
+                const canvas = elements.dialCanvas;
+                const ctx = canvas.getContext('2d');
+                
+                elements.dialFeedback.textContent = "";
+                elements.dialSubmitBtn.disabled = false;
+                elements.dialModal.classList.remove('hidden');
+                showCursor();
+
+                const flyImg = new Image();
+                flyImg.src = 'fly.png';
+                
+                function drawDial(angleRadians, showCorrect = false) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.beginPath();
+                    ctx.arc(120, 120, 80, 0, 2 * Math.PI);
+                    ctx.strokeStyle = '#cbd5e1';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.arc(120, 120, 6, 0, 2 * Math.PI);
+                    ctx.fillStyle = '#64748b';
+                    ctx.fill();
+
+                    if (flyImg.complete) {
+                        ctx.drawImage(flyImg, 200 - 15, 120 - 15, 30, 30);
+                    } else {
+                        flyImg.onload = () => {
+                            ctx.drawImage(flyImg, 200 - 15, 120 - 15, 30, 30);
+                        };
+                    }
+
+                    if (showCorrect) {
+                        ctx.beginPath();
+                        ctx.moveTo(120, 120);
+                        ctx.arc(120, 120, 80, -5 * Math.PI / 180, 5 * Math.PI / 180);
+                        ctx.closePath();
+                        ctx.fillStyle = 'rgba(34, 197, 94, 0.15)';
+                        ctx.fill();
+
+                        ctx.beginPath();
+                        ctx.setLineDash([5, 5]);
+                        ctx.moveTo(120, 120);
+                        ctx.lineTo(200, 120);
+                        ctx.strokeStyle = '#22c55e';
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+
+                    ctx.beginPath();
+                    ctx.moveTo(120, 120);
+                    const targetX = 120 + 80 * Math.cos(angleRadians);
+                    const targetY = 120 + 80 * Math.sin(angleRadians);
+                    ctx.lineTo(targetX, targetY);
+                    ctx.strokeStyle = '#3b82f6';
+                    ctx.lineWidth = 4;
+                    ctx.lineCap = 'round';
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.arc(targetX, targetY, 8, 0, 2 * Math.PI);
+                    ctx.fillStyle = '#2563eb';
+                    ctx.fill();
+                }
+
+                drawDial(state.currentDialAngle, false);
+
+                let isDragging = false;
+                function updateAngleFromEvent(e) {
+                    const rect = canvas.getBoundingClientRect();
+                    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+                    if (clientX === undefined || clientY === undefined) return;
+                    const x = clientX - rect.left;
+                    const y = clientY - rect.top;
+                    state.currentDialAngle = Math.atan2(y - 120, x - 120);
+                    drawDial(state.currentDialAngle, showCorrectDirection);
+                }
+
+                const handleMouseDown = (e) => {
+                    isDragging = true;
+                    updateAngleFromEvent(e);
+                };
+                const handleMouseMove = (e) => {
+                    if (isDragging) {
+                        updateAngleFromEvent(e);
+                    }
+                };
+                const handleMouseUp = () => {
+                    isDragging = false;
+                };
+
+                canvas.addEventListener('mousedown', handleMouseDown);
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
+
+                const handleTouchStart = (e) => {
+                    isDragging = true;
+                    updateAngleFromEvent(e);
+                    e.preventDefault();
+                };
+                const handleTouchMove = (e) => {
+                    if (isDragging) {
+                        updateAngleFromEvent(e);
+                    }
+                    e.preventDefault();
+                };
+
+                canvas.addEventListener('touchstart', handleTouchStart);
+                canvas.addEventListener('touchmove', handleTouchMove);
+                canvas.addEventListener('touchend', handleMouseUp);
+
+                const handleSubmit = async () => {
+                    const correctAngleDegrees = 0;
+                    const userAngleDegrees = state.currentDialAngle * 180 / Math.PI;
+                    const diff = Math.abs(((userAngleDegrees - correctAngleDegrees + 180) % 360) - 180);
+
+                    state.dialTries++;
+                    if (diff <= 5) {
+                        elements.dialFeedback.style.color = '#16a34a';
+                        elements.dialFeedback.textContent = "Correct! Aim directly at the fly.";
+                        elements.dialSubmitBtn.disabled = true;
+
+                        canvas.removeEventListener('mousedown', handleMouseDown);
+                        document.removeEventListener('mousemove', handleMouseMove);
+                        document.removeEventListener('mouseup', handleMouseUp);
+                        canvas.removeEventListener('touchstart', handleTouchStart);
+                        canvas.removeEventListener('touchmove', handleTouchMove);
+                        canvas.removeEventListener('touchend', handleMouseUp);
+                        elements.dialSubmitBtn.removeEventListener('click', handleSubmit);
+
+                        setTimeout(async () => {
+                            elements.dialModal.classList.add('hidden');
+                            hideCursor();
+                            await saveDialTriesToFirebase();
+                            resolve();
+                        }, 1500);
+                    } else {
+                        showCorrectDirection = true;
+                        elements.dialFeedback.style.color = '#dc2626';
+                        elements.dialFeedback.textContent = `Incorrect (off by ${Math.round(diff)}°). Controls are now normal, aim directly at the fly.`;
+                        drawDial(state.currentDialAngle, true);
+                    }
+                };
+
+                elements.dialSubmitBtn.addEventListener('click', handleSubmit);
+            });
+        }
+
+        // ============================================================
+        // DEV PANEL (ADMIN MODE)
+        // ============================================================
+        function triggerSkip(targetIndex) {
+            if (activeTimeout) {
+                if (typeof activeTimeout.clear === 'function') {
+                    activeTimeout.clear();
+                } else {
+                    clearTimeout(activeTimeout);
+                }
+                activeTimeout = null;
+            }
+
+            if (activeReject) {
+                activeReject(new TrialAbortError());
+                activeReject = null;
+            }
+
+            hideModal();
+            elements.handModal.classList.add('hidden');
+            elements.dialModal.classList.add('hidden');
+            
+            pauseGame();
+            stopRecording();
+
+            state.trialIndex = targetIndex;
+            buildTrialQueue();
+            state.trialsRemaining = trialQueue.length - state.trialIndex;
+            elements.trialCounter.textContent = state.trialsRemaining;
+
+            runGame();
+        }
+
+        function initAdminPanel() {
+            if (prolificId !== "admin") return;
+
+            const panel = document.createElement('div');
+            panel.id = 'adminPanel';
+            panel.className = 'admin-panel';
+            panel.innerHTML = `
+                <div class="admin-panel-header" id="adminHeader">
+                    <span>🛠️ Dev Mode</span>
+                    <span id="adminToggleArrow">▼</span>
+                </div>
+                <div class="admin-panel-body">
+                    <div class="admin-input-group">
+                        <label>Trial Counts</label>
+                        <div class="admin-input-row">
+                            <input class="admin-input" type="number" id="adminBase" placeholder="Base" value="${CONFIG.trials.baseline}">
+                            <input class="admin-input" type="number" id="adminHold" placeholder="Hold" value="${CONFIG.trials.hold}">
+                        </div>
+                        <div class="admin-input-row" style="margin-top: 6px;">
+                            <input class="admin-input" type="number" id="adminRamp" placeholder="Ramp" value="${CONFIG.trials.rampUp}">
+                            <input class="admin-input" type="number" id="adminAfter" placeholder="After" value="${CONFIG.trials.aftereffect}">
+                        </div>
+                        <div class="admin-input-row" style="margin-top: 6px; grid-template-columns: 1fr;">
+                            <input class="admin-input" type="number" id="adminNoFeedbackN" placeholder="No-feedback every N (0=always, 1=never)" value="${CONFIG.feedback.noFeedbackEveryN}" min="0">
+                        </div>
+                        <button class="admin-btn" id="adminApplyCounts" style="margin-top: 6px;">Apply Counts</button>
+                    </div>
+                    
+                    <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 5px 0;">
+                    
+                    <div class="admin-input-group">
+                        <label id="adminSkipLabel">Skip to Trial (0 to ${trialQueue.length - 1})</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input class="admin-input" type="number" id="adminSkipTarget" style="flex: 1;" placeholder="Index" min="0">
+                            <button class="admin-btn" id="adminSkipBtn">Go</button>
+                        </div>
+                    </div>
+                    
+                    <button class="admin-btn admin-btn-secondary" id="adminSkipCurrentBtn">Skip Current Trial</button>
+                </div>
+            `;
+            document.body.appendChild(panel);
+
+            const header = document.getElementById('adminHeader');
+            const arrow = document.getElementById('adminToggleArrow');
+            header.addEventListener('click', () => {
+                panel.classList.toggle('collapsed');
+                arrow.textContent = panel.classList.contains('collapsed') ? '▲' : '▼';
+            });
+
+            document.getElementById('adminApplyCounts').addEventListener('click', () => {
+                const base = parseInt(document.getElementById('adminBase').value) || 0;
+                const hold = parseInt(document.getElementById('adminHold').value) || 0;
+                const ramp = parseInt(document.getElementById('adminRamp').value) || 0;
+                const after = parseInt(document.getElementById('adminAfter').value) || 0;
+                const noFeedbackN = parseInt(document.getElementById('adminNoFeedbackN').value);
+
+                CONFIG.trials.baseline = base;
+                CONFIG.trials.hold = hold;
+                CONFIG.trials.rampUp = ramp;
+                CONFIG.trials.aftereffect = after;
+                CONFIG.feedback.noFeedbackEveryN = isNaN(noFeedbackN) ? CONFIG.feedback.noFeedbackEveryN : noFeedbackN;
+
+                buildTrialQueue();
+                state.trialsRemaining = trialQueue.length - state.trialIndex;
+                elements.trialCounter.textContent = state.trialsRemaining;
+
+                const skipInput = document.getElementById('adminSkipTarget');
+                skipInput.max = trialQueue.length - 1;
+                document.getElementById('adminSkipLabel').textContent = `Skip to Trial (0 to ${trialQueue.length - 1})`;
+
+                alert(`Trial counts updated! Rebuilt queue with ${trialQueue.length} total trials.`);
+            });
+
+            document.getElementById('adminSkipBtn').addEventListener('click', () => {
+                const targetIndex = parseInt(document.getElementById('adminSkipTarget').value);
+                if (isNaN(targetIndex) || targetIndex < 0 || targetIndex >= trialQueue.length) {
+                    alert(`Please enter a valid trial index between 0 and ${trialQueue.length - 1}`);
+                    return;
+                }
+                triggerSkip(targetIndex);
+            });
+
+            document.getElementById('adminSkipCurrentBtn').addEventListener('click', () => {
+                const nextIdx = state.trialIndex + (state.isPlaying ? 1 : 0);
+                if (nextIdx >= trialQueue.length) {
+                    triggerSkip(trialQueue.length);
+                } else {
+                    triggerSkip(nextIdx);
+                }
+            });
         }
 
         // ============================================================
@@ -824,11 +1431,17 @@
                 acc.push((acc.length > 0 ? acc[acc.length - 1] : 0) + arr.length);
                 return acc;
             }, []);
+            
+            const idx1 = Math.max(0, Math.min(cumulativeLengths.length - 1, trials.baseline - 1));
+            const idx2 = Math.max(0, Math.min(cumulativeLengths.length - 1, trials.baseline + trials.rampUp - 1));
+            const idx3 = Math.max(0, Math.min(cumulativeLengths.length - 1, trials.baseline + trials.rampUp + trials.hold - 1));
+            const idx4 = Math.max(0, Math.min(cumulativeLengths.length - 1, trials.baseline + trials.rampUp + trials.hold + trials.aftereffect - 1));
+            
             const highlights = [
-                cumulativeLengths[trials.baseline - 1],
-                cumulativeLengths[trials.baseline + trials.rampUp - 1],
-                cumulativeLengths[trials.baseline + trials.rampUp + trials.hold - 1],
-                cumulativeLengths[trials.baseline + trials.rampUp + trials.hold + trials.aftereffect - 1]
+                cumulativeLengths[idx1] || 0,
+                cumulativeLengths[idx2] || 0,
+                cumulativeLengths[idx3] || 0,
+                cumulativeLengths[idx4] || 0
             ];
             return { flatDistances, highlights };
         }
@@ -852,8 +1465,12 @@
         // ============================================================
         async function initialize() {
             checkConsent();
+            buildTrialQueue();
+            initAdminPanel();
             state.user.x = state.screen.width / 2;
             state.user.y = state.screen.height / 2;
+            state.realUser.x = state.screen.width / 2;
+            state.realUser.y = state.screen.height / 2;
             state.fly.x = state.screen.width / 2;
             state.fly.y = state.screen.height / 2;
             updateUserDotPosition();
