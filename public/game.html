@@ -191,11 +191,13 @@
             font-size: 13px;
             cursor: auto;
         }
+
         .admin-panel.collapsed {
             width: 140px;
             height: 40px;
             background: rgba(15, 23, 42, 0.85);
         }
+
         .admin-panel-header {
             padding: 10px 15px;
             background: rgba(30, 41, 59, 0.5);
@@ -208,28 +210,33 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             user-select: none;
         }
+
         .admin-panel-body {
             padding: 15px;
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
+
         .admin-input-group {
             display: flex;
             flex-direction: column;
             gap: 4px;
         }
+
         .admin-input-group label {
             font-size: 11px;
             color: #94a3b8;
             text-transform: uppercase;
             font-weight: 500;
         }
+
         .admin-input-row {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 8px;
         }
+
         .admin-input {
             background: rgba(30, 41, 59, 0.8);
             border: 1px solid rgba(255, 255, 255, 0.15);
@@ -239,10 +246,12 @@
             font-size: 13px;
             width: 100%;
         }
+
         .admin-input:focus {
             outline: none;
             border-color: #3b82f6;
         }
+
         .admin-btn {
             background: #2563eb;
             color: white;
@@ -256,13 +265,16 @@
             text-align: center;
             width: 100%;
         }
+
         .admin-btn:hover {
             background: #1d4ed8;
         }
+
         .admin-btn-secondary {
             background: rgba(255, 255, 255, 0.1);
             color: #e2e8f0;
         }
+
         .admin-btn-secondary:hover {
             background: rgba(255, 255, 255, 0.15);
         }
@@ -302,10 +314,32 @@
                 Click and drag the dial to point in the correct direction.
             </p>
             <div style="display: flex; justify-content: center; margin: 15px 0;">
-                <canvas id="dialCanvas" width="240" height="240" style="border: 1px solid #ccc; border-radius: 50%; background: #fafafa; cursor: pointer;"></canvas>
+                <canvas id="dialCanvas" width="240" height="240"
+                    style="border-radius: 50%; background: #fafafa; cursor: pointer;"></canvas>
             </div>
-            <p id="dialFeedback" style="font-size: 14px; font-weight: bold; min-height: 20px; color: #dc2626; margin: 10px 0;"></p>
-            <button class="modal-button" id="dialSubmitBtn" style="position: relative; bottom: 0; left: 0; transform: none; margin: 10px auto 0; display: block;">Submit Answer</button>
+            <p id="dialFeedback"
+                style="font-size: 14px; font-weight: bold; min-height: 20px; color: #dc2626; margin: 10px 0;"></p>
+            <button class="modal-button" id="dialSubmitBtn"
+                style="position: relative; bottom: 0; left: 0; transform: none; margin: 10px auto 0; display: block;">Submit
+                Answer</button>
+        </div>
+    </div>
+
+    <!-- Pre-washout aim dial modal — gauges perceived rotation before washout -->
+    <div class="modal-overlay hidden" id="preWashoutDialModal">
+        <div class="modal" style="width: 450px; padding: 25px 25px 20px;">
+            <p style="font-weight: 600; font-size: 16px; margin-bottom: 8px;">
+                In the previous trial, when the fly was to the right, where were you aiming your cursor?
+            </p>
+            <p style="font-size: 14px; color: #555; margin-top: 0; margin-bottom: 15px;">
+                Drag the dial to show the direction you were pointing your mouse toward.
+            </p>
+            <div style="display: flex; justify-content: center; margin: 15px 0;">
+                <canvas id="preWashoutDialCanvas" width="240" height="240"
+                    style="border-radius: 50%; background: #fafafa; cursor: pointer;"></canvas>
+            </div>
+            <button class="modal-button" id="preWashoutDialSubmitBtn"
+                style="position: relative; bottom: 0; left: 0; transform: none; margin: 10px auto 0; display: block;">Submit</button>
         </div>
     </div>
 
@@ -318,14 +352,14 @@
         // ============================================================
         const CONFIG = {
             perturbation: {
-                degreesPerTrial: 30,
+                degreesPerTrial: 1,
                 maxDegrees: 30,
             },
 
             trials: {
                 baseline: 16,
-                rampUp: 0,
-                hold: 36,
+                rampUp: 30,
+                hold: 6,
                 aftereffect: 4,
             },
 
@@ -455,6 +489,8 @@
             canNavigate: true,
             dialTries: 0,
             currentDialAngle: 0,
+            preWashoutAimAngle: 0,
+            preWashoutAimDegrees: 0,
             isPlaying: false,
             // Whether the current trial has a visible cursor. Drives which
             // position basis counts as "where the user believes their cursor
@@ -505,7 +541,10 @@
             dialModal: document.getElementById('dialModal'),
             dialCanvas: document.getElementById('dialCanvas'),
             dialFeedback: document.getElementById('dialFeedback'),
-            dialSubmitBtn: document.getElementById('dialSubmitBtn')
+            dialSubmitBtn: document.getElementById('dialSubmitBtn'),
+            preWashoutDialModal: document.getElementById('preWashoutDialModal'),
+            preWashoutDialCanvas: document.getElementById('preWashoutDialCanvas'),
+            preWashoutDialSubmitBtn: document.getElementById('preWashoutDialSubmitBtn')
         };
 
         // ============================================================
@@ -1012,7 +1051,7 @@
             phases.forEach(p => {
                 for (let i = 0; i < p.count; i++) {
                     let hasFeedback = true;
-                    if (p.name === "baseline" || p.name === "rampUp" || p.name === "hold") {
+                    if (p.name === "baseline") {
                         hasFeedback = computeHasFeedback(i);
                     } else if (p.name === "aftereffect") {
                         hasFeedback = false;
@@ -1034,7 +1073,7 @@
             state.isPlaying = true;
             state.trialsRemaining = trialQueue.length - state.trialIndex;
             elements.trialCounter.textContent = state.trialsRemaining;
-            
+
             state.currentHasFeedback = trial.hasFeedback;
             updateRotationForPhase(trial.phase, trial.phaseTrialIndex);
             setMouseHandler(state.currentRotationDegrees != 0);
@@ -1059,7 +1098,7 @@
             requestPointerLock();
             startRecording();
             state.trialStartTime = Date.now();
-            
+
             gameLoop(state.phis[state.phis.length - 1]);
 
             await interruptableWait(CONFIG.durations.trialLength);
@@ -1074,6 +1113,7 @@
             if (trial.phase === "hold" && nextTrial && nextTrial.phase === "aftereffect") {
                 const phaseStartIndex = trialQueue.findIndex(t => t.phase === trial.phase);
                 await uploadPhaseData(trial.phase, phaseStartIndex, state.trialIndex);
+                await showPreWashoutDialModal();
                 await showModal(CONFIG.messages.holdToAftereffect);
                 await showDialModal();
             } else if (trial.isLastOfPhase) {
@@ -1100,7 +1140,7 @@
                     const trial = trialQueue[state.trialIndex];
                     state.currentPhase = trial.phase;
                     state.phaseTrialIndex = trial.phaseTrialIndex;
-                    
+
                     await runSingleTrialFlow(trial);
                 }
 
@@ -1122,6 +1162,57 @@
         // ============================================================
         // DIAL MODAL & SAVE ATTEMPTS
         // ============================================================
+
+        // Draws the dial onto ctx. Shadow is rendered at the arm tip; fly is always at
+        // the fixed right position and rendered on top so it overlaps the shadow correctly.
+        function drawDialOnCanvas(ctx, angleRad, shadowImg, flyImg, showCorrect = false) {
+            const cx = 120, cy = 120, r = 80, imgSize = 30;
+            ctx.clearRect(0, 0, 240, 240);
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, 6, 0, 2 * Math.PI);
+            ctx.fillStyle = '#64748b';
+            ctx.fill();
+
+            if (showCorrect) {
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, r, -5 * Math.PI / 180, 5 * Math.PI / 180);
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(34, 197, 94, 0.15)';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.setLineDash([5, 5]);
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx + r, cy);
+                ctx.strokeStyle = '#22c55e';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            const tipX = cx + r * Math.cos(angleRad);
+            const tipY = cy + r * Math.sin(angleRad);
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(tipX, tipY);
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            // Shadow at arm tip — drawn before fly so fly renders on top when overlapping
+            if (shadowImg.complete) ctx.drawImage(shadowImg, tipX - imgSize / 2, tipY - imgSize / 2, imgSize, imgSize);
+            // Fly fixed to the right of center
+            if (flyImg.complete) ctx.drawImage(flyImg, cx + r - imgSize / 2, cy - imgSize / 2, imgSize, imgSize);
+        }
+
         async function saveDialTriesToFirebase() {
             if (!CONFIG.upload.enabled || !auth?.currentUser) return;
             try {
@@ -1129,89 +1220,121 @@
                 const { experimentCollection } = CONFIG.firebase;
                 const oderId = `${prolificId}_${auth.currentUser.uid}`;
                 const userDocRef = doc(db, experimentCollection, oderId);
-                await setDoc(userDocRef, {
-                    dialTries: state.dialTries
-                }, { merge: true });
+                await setDoc(userDocRef, { dialTries: state.dialTries }, { merge: true });
                 console.log("Dial tries saved to Firebase successfully:", state.dialTries);
             } catch (error) {
                 console.error("Error saving dial tries to Firebase:", error);
             }
         }
 
+        async function savePreWashoutDialToFirebase() {
+            if (!CONFIG.upload.enabled || !auth?.currentUser) return;
+            try {
+                const { doc, setDoc } = window.firebaseModules;
+                const { experimentCollection } = CONFIG.firebase;
+                const oderId = `${prolificId}_${auth.currentUser.uid}`;
+                const userDocRef = doc(db, experimentCollection, oderId);
+                await setDoc(userDocRef, { preWashoutAimAngleDegrees: state.preWashoutAimDegrees }, { merge: true });
+                console.log("Pre-washout aim angle saved:", state.preWashoutAimDegrees);
+            } catch (error) {
+                console.error("Error saving pre-washout dial to Firebase:", error);
+            }
+        }
+
+        // Pre-washout question: "where were you aiming?" — no right/wrong, just records the answer.
+        function showPreWashoutDialModal() {
+            return new Promise(resolve => {
+                state.preWashoutAimAngle = -Math.PI / 2;
+
+                const canvas = elements.preWashoutDialCanvas;
+                const ctx = canvas.getContext('2d');
+
+                elements.preWashoutDialModal.classList.remove('hidden');
+                showCursor();
+
+                const flyImg = new Image();
+                const shadowImg = new Image();
+
+                function redraw() {
+                    drawDialOnCanvas(ctx, state.preWashoutAimAngle, shadowImg, flyImg, false);
+                }
+
+                flyImg.onload = redraw;
+                shadowImg.onload = redraw;
+                flyImg.src = 'fly.png';
+                shadowImg.src = 'shadow.png';
+                redraw();
+
+                let isDragging = false;
+                function updateAngle(e) {
+                    const rect = canvas.getBoundingClientRect();
+                    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+                    if (clientX === undefined || clientY === undefined) return;
+                    state.preWashoutAimAngle = Math.atan2(clientY - rect.top - 120, clientX - rect.left - 120);
+                    redraw();
+                }
+
+                const onMouseDown = e => { isDragging = true; updateAngle(e); };
+                const onMouseMove = e => { if (isDragging) updateAngle(e); };
+                const onMouseUp = () => { isDragging = false; };
+                const onTouchStart = e => { isDragging = true; updateAngle(e); e.preventDefault(); };
+                const onTouchMove = e => { if (isDragging) updateAngle(e); e.preventDefault(); };
+
+                canvas.addEventListener('mousedown', onMouseDown);
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+                canvas.addEventListener('touchstart', onTouchStart);
+                canvas.addEventListener('touchmove', onTouchMove);
+                canvas.addEventListener('touchend', onMouseUp);
+
+                const handleSubmit = async () => {
+                    canvas.removeEventListener('mousedown', onMouseDown);
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    canvas.removeEventListener('touchstart', onTouchStart);
+                    canvas.removeEventListener('touchmove', onTouchMove);
+                    canvas.removeEventListener('touchend', onMouseUp);
+                    elements.preWashoutDialSubmitBtn.removeEventListener('click', handleSubmit);
+
+                    elements.preWashoutDialModal.classList.add('hidden');
+                    hideCursor();
+                    state.preWashoutAimDegrees = state.preWashoutAimAngle * 180 / Math.PI;
+                    await savePreWashoutDialToFirebase();
+                    resolve();
+                };
+
+                elements.preWashoutDialSubmitBtn.addEventListener('click', handleSubmit);
+            });
+        }
+
+        // Post-hold verification question: teaches participant controls are now normal.
         function showDialModal() {
             return new Promise(resolve => {
                 state.dialTries = 0;
-                state.currentDialAngle = -Math.PI / 2; // Point straight up initially
+                state.currentDialAngle = -Math.PI / 2;
                 let showCorrectDirection = false;
 
                 const canvas = elements.dialCanvas;
                 const ctx = canvas.getContext('2d');
-                
+
                 elements.dialFeedback.textContent = "";
                 elements.dialSubmitBtn.disabled = false;
                 elements.dialModal.classList.remove('hidden');
                 showCursor();
 
                 const flyImg = new Image();
-                flyImg.src = 'fly.png';
-                
-                function drawDial(angleRadians, showCorrect = false) {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    
-                    ctx.beginPath();
-                    ctx.arc(120, 120, 80, 0, 2 * Math.PI);
-                    ctx.strokeStyle = '#cbd5e1';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
+                const shadowImg = new Image();
 
-                    ctx.beginPath();
-                    ctx.arc(120, 120, 6, 0, 2 * Math.PI);
-                    ctx.fillStyle = '#64748b';
-                    ctx.fill();
-
-                    if (flyImg.complete) {
-                        ctx.drawImage(flyImg, 200 - 15, 120 - 15, 30, 30);
-                    } else {
-                        flyImg.onload = () => {
-                            ctx.drawImage(flyImg, 200 - 15, 120 - 15, 30, 30);
-                        };
-                    }
-
-                    if (showCorrect) {
-                        ctx.beginPath();
-                        ctx.moveTo(120, 120);
-                        ctx.arc(120, 120, 80, -5 * Math.PI / 180, 5 * Math.PI / 180);
-                        ctx.closePath();
-                        ctx.fillStyle = 'rgba(34, 197, 94, 0.15)';
-                        ctx.fill();
-
-                        ctx.beginPath();
-                        ctx.setLineDash([5, 5]);
-                        ctx.moveTo(120, 120);
-                        ctx.lineTo(200, 120);
-                        ctx.strokeStyle = '#22c55e';
-                        ctx.lineWidth = 3;
-                        ctx.stroke();
-                        ctx.setLineDash([]);
-                    }
-
-                    ctx.beginPath();
-                    ctx.moveTo(120, 120);
-                    const targetX = 120 + 80 * Math.cos(angleRadians);
-                    const targetY = 120 + 80 * Math.sin(angleRadians);
-                    ctx.lineTo(targetX, targetY);
-                    ctx.strokeStyle = '#3b82f6';
-                    ctx.lineWidth = 4;
-                    ctx.lineCap = 'round';
-                    ctx.stroke();
-
-                    ctx.beginPath();
-                    ctx.arc(targetX, targetY, 8, 0, 2 * Math.PI);
-                    ctx.fillStyle = '#2563eb';
-                    ctx.fill();
+                function redraw() {
+                    drawDialOnCanvas(ctx, state.currentDialAngle, shadowImg, flyImg, showCorrectDirection);
                 }
 
-                drawDial(state.currentDialAngle, false);
+                flyImg.onload = redraw;
+                shadowImg.onload = redraw;
+                flyImg.src = 'fly.png';
+                shadowImg.src = 'shadow.png';
+                redraw();
 
                 let isDragging = false;
                 function updateAngleFromEvent(e) {
@@ -1219,49 +1342,26 @@
                     const clientX = e.clientX || (e.touches && e.touches[0].clientX);
                     const clientY = e.clientY || (e.touches && e.touches[0].clientY);
                     if (clientX === undefined || clientY === undefined) return;
-                    const x = clientX - rect.left;
-                    const y = clientY - rect.top;
-                    state.currentDialAngle = Math.atan2(y - 120, x - 120);
-                    drawDial(state.currentDialAngle, showCorrectDirection);
+                    state.currentDialAngle = Math.atan2(clientY - rect.top - 120, clientX - rect.left - 120);
+                    redraw();
                 }
 
-                const handleMouseDown = (e) => {
-                    isDragging = true;
-                    updateAngleFromEvent(e);
-                };
-                const handleMouseMove = (e) => {
-                    if (isDragging) {
-                        updateAngleFromEvent(e);
-                    }
-                };
-                const handleMouseUp = () => {
-                    isDragging = false;
-                };
+                const handleMouseDown = e => { isDragging = true; updateAngleFromEvent(e); };
+                const handleMouseMove = e => { if (isDragging) updateAngleFromEvent(e); };
+                const handleMouseUp = () => { isDragging = false; };
+                const handleTouchStart = e => { isDragging = true; updateAngleFromEvent(e); e.preventDefault(); };
+                const handleTouchMove = e => { if (isDragging) updateAngleFromEvent(e); e.preventDefault(); };
 
                 canvas.addEventListener('mousedown', handleMouseDown);
                 document.addEventListener('mousemove', handleMouseMove);
                 document.addEventListener('mouseup', handleMouseUp);
-
-                const handleTouchStart = (e) => {
-                    isDragging = true;
-                    updateAngleFromEvent(e);
-                    e.preventDefault();
-                };
-                const handleTouchMove = (e) => {
-                    if (isDragging) {
-                        updateAngleFromEvent(e);
-                    }
-                    e.preventDefault();
-                };
-
                 canvas.addEventListener('touchstart', handleTouchStart);
                 canvas.addEventListener('touchmove', handleTouchMove);
                 canvas.addEventListener('touchend', handleMouseUp);
 
                 const handleSubmit = async () => {
-                    const correctAngleDegrees = 0;
                     const userAngleDegrees = state.currentDialAngle * 180 / Math.PI;
-                    const diff = Math.abs(((userAngleDegrees - correctAngleDegrees + 180) % 360) - 180);
+                    const diff = Math.abs(((userAngleDegrees + 180) % 360) - 180);
 
                     state.dialTries++;
                     if (diff <= 5) {
@@ -1287,7 +1387,7 @@
                         showCorrectDirection = true;
                         elements.dialFeedback.style.color = '#dc2626';
                         elements.dialFeedback.textContent = `Incorrect (off by ${Math.round(diff)}°). Controls are now normal, aim directly at the fly.`;
-                        drawDial(state.currentDialAngle, true);
+                        redraw();
                     }
                 };
 
@@ -1316,7 +1416,8 @@
             hideModal();
             elements.handModal.classList.add('hidden');
             elements.dialModal.classList.add('hidden');
-            
+            elements.preWashoutDialModal.classList.add('hidden');
+
             pauseGame();
             stopRecording();
 
@@ -1431,12 +1532,12 @@
                 acc.push((acc.length > 0 ? acc[acc.length - 1] : 0) + arr.length);
                 return acc;
             }, []);
-            
+
             const idx1 = Math.max(0, Math.min(cumulativeLengths.length - 1, trials.baseline - 1));
             const idx2 = Math.max(0, Math.min(cumulativeLengths.length - 1, trials.baseline + trials.rampUp - 1));
             const idx3 = Math.max(0, Math.min(cumulativeLengths.length - 1, trials.baseline + trials.rampUp + trials.hold - 1));
             const idx4 = Math.max(0, Math.min(cumulativeLengths.length - 1, trials.baseline + trials.rampUp + trials.hold + trials.aftereffect - 1));
-            
+
             const highlights = [
                 cumulativeLengths[idx1] || 0,
                 cumulativeLengths[idx2] || 0,
