@@ -352,8 +352,8 @@
         // ============================================================
         const CONFIG = {
             perturbation: {
-                degreesPerTrial: 1,
-                maxDegrees: 30,
+                degreesPerTrial: -1,
+                maxDegrees: -30,
             },
 
             trials: {
@@ -1105,6 +1105,24 @@
 
             pauseGame();
             stopRecording();
+
+            // Check movement before saveTrialData clears currentTrialData
+            const lowMovement = (() => {
+                const pos = state.currentTrialData.userPositions;
+                if (!pos || pos.length < 2) return false;
+                const vels = [];
+                for (let i = 1; i < pos.length; i++) {
+                    const dx = pos[i].x - pos[i-1].x;
+                    const dy = pos[i].y - pos[i-1].y;
+                    vels.push(Math.sqrt(dx*dx + dy*dy));
+                }
+                vels.sort((a, b) => a - b);
+                return vels[Math.floor(vels.length / 2)] < 5;
+            })();
+            const lowMovementPrefix = lowMovement
+                ? '<strong>We did not detect you moving your mouse to track the target. Please note that payment is conditional on giving an honest attempt at tracking the target.</strong><br><br>'
+                : '';
+
             saveTrialData();
             state.isPlaying = false;
 
@@ -1114,19 +1132,19 @@
                 const phaseStartIndex = trialQueue.findIndex(t => t.phase === trial.phase);
                 await uploadPhaseData(trial.phase, phaseStartIndex, state.trialIndex);
                 await showPreWashoutDialModal();
-                await showModal(CONFIG.messages.holdToAftereffect);
+                await showModal(lowMovementPrefix + CONFIG.messages.holdToAftereffect);
                 await showDialModal();
             } else if (trial.isLastOfPhase) {
                 const phaseStartIndex = trialQueue.findIndex(t => t.phase === trial.phase);
                 await uploadPhaseData(trial.phase, phaseStartIndex, state.trialIndex);
                 if (trial.nextPhase !== "done") {
-                    await showModal(trial.transitionMessage);
+                    await showModal(lowMovementPrefix + trial.transitionMessage);
                 }
             } else {
                 if (nextTrial && !nextTrial.hasFeedback && nextTrial.phase !== "aftereffect") {
-                    await showModal("Good job! On the next trial, you won't see your cursor. Do your best to aim towards the fly.");
+                    await showModal(lowMovementPrefix + "Good job! On the next trial, you won't see your cursor. Do your best to aim towards the fly.");
                 } else {
-                    await showModal(CONFIG.messages.trialComplete);
+                    await showModal(lowMovementPrefix + CONFIG.messages.trialComplete);
                 }
             }
         }
