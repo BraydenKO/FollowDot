@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracking Demo (Experiment 2)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            background-color: #f5f5f5;
+        }
+
+        body.playing {
+            overflow: hidden;
+            cursor: none;
+            padding: 0;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* ============================================================
+           SETTINGS SCREEN
+           ============================================================ */
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 780px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin: 0 0 6px 0;
+            font-size: 1.6em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin: 0 0 25px 0;
+            font-size: 0.9em;
+        }
+
+        h2 {
+            font-size: 1.05em;
+            color: #333;
+            margin: 0 0 10px 0;
+            border-bottom: 1px solid #e5e5e5;
+            padding-bottom: 6px;
+        }
+
+        section.panel {
+            margin-bottom: 22px;
+        }
+
+        .freq-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        table.freq-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85em;
+        }
+
+        table.freq-table th {
+            text-align: left;
+            color: #888;
+            font-weight: 500;
+            font-size: 0.85em;
+            padding: 4px 6px;
+        }
+
+        table.freq-table td {
+            padding: 4px 6px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        table.freq-table input[type="number"] {
+            width: 70px;
+            padding: 4px 6px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.95em;
+        }
+
+        table.freq-table tr.disabled td {
+            color: #bbb;
+        }
+
+        table.freq-table tr.disabled input {
+            color: #bbb;
+            background: #f7f7f7;
+        }
+
+        .freq-val {
+            color: #555;
+        }
+
+        .radio-row {
+            display: flex;
+            gap: 18px;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        .phase-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .phase-grid label {
+            font-size: 0.75em;
+            color: #888;
+            display: block;
+            text-align: center;
+            margin-bottom: 2px;
+        }
+
+        .phase-grid input {
+            width: 100%;
+            padding: 4px 2px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 0.85em;
+        }
+
+        button.small-btn {
+            background: rgba(37, 99, 235, 0.1);
+            color: #2563eb;
+            border: 1px solid rgba(37, 99, 235, 0.3);
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-size: 0.82em;
+            cursor: pointer;
+        }
+
+        button.small-btn:hover {
+            background: rgba(37, 99, 235, 0.18);
+        }
+
+        .rotation-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.92em;
+        }
+
+        .rotation-row input[type="number"] {
+            width: 90px;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+        }
+
+        .hint {
+            color: #888;
+            font-size: 0.8em;
+            margin: 6px 0 0 0;
+        }
+
+        .action-row {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+            margin-top: 28px;
+        }
+
+        .action-btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            color: white;
+            transition: background 0.2s;
+        }
+
+        .action-btn.play {
+            background: #2563eb;
+        }
+
+        .action-btn.play:hover {
+            background: #1d4ed8;
+        }
+
+        .action-btn.path {
+            background: #16a34a;
+        }
+
+        .action-btn.path:hover {
+            background: #15803d;
+        }
+
+        /* ============================================================
+           TRACKING / PATH SCREENS (fullscreen dot area)
+           ============================================================ */
+        .dot {
+            position: absolute;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            background-color: transparent;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            border: none;
+        }
+
+        .user-dot {
+            background-image: url('shadow.png');
+            width: 50px;
+            height: 50px;
+        }
+
+        .user-dot.close {
+            background-image: url('shadow_green.png');
+            width: 60px;
+            height: 60px;
+        }
+
+        .fly-dot {
+            background-image: url('fly.png');
+            width: 50px;
+            height: 50px;
+        }
+
+        .play-screen,
+        .path-screen {
+            position: fixed;
+            inset: 0;
+            background: white;
+        }
+
+        .hud {
+            position: fixed;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            color: #444;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 6px 14px;
+            border-radius: 6px;
+            z-index: 50;
+            cursor: auto;
+        }
+
+        .countdown-timer {
+            position: fixed;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 22px;
+            font-weight: bold;
+            color: white;
+            background: black;
+            padding: 8px 16px;
+            border-radius: 6px;
+            z-index: 100;
+        }
+
+        .countdown-timer.hidden {
+            display: none;
+        }
+
+        #pathCanvas {
+            position: absolute;
+            inset: 0;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 14px;
+            right: 14px;
+            z-index: 50;
+            padding: 8px 16px;
+            background: #334155;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .back-btn:hover {
+            background: #1e293b;
+        }
+
+        /* Trial complete modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            cursor: auto;
+        }
+
+        .modal-overlay.hidden {
+            display: none;
+        }
+
+        .modal {
+            background: white;
+            padding: 30px 25px;
+            border-radius: 12px;
+            text-align: center;
+            width: 340px;
+            max-width: 90vw;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal p {
+            margin: 0 0 20px;
+            font-size: 16px;
+            line-height: 1.5;
+            color: #333;
+        }
+
+        .modal-button {
+            padding: 12px 28px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .modal-button:hover {
+            background: #1d4ed8;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- ============================================================
+         SETTINGS SCREEN
+         ============================================================ -->
+    <div class="container" id="settingsScreen">
+        <h1>Tracking Demo — Experiment 2</h1>
+        <p class="subtitle">Pick which sinusoid components drive the target, set amplitudes/phase, and preview a
+            single trial..</p>
+
+        <section class="panel">
+            <h2>Target frequencies &amp; amplitudes</h2>
+            <div class="freq-columns">
+                <div>
+                    <strong>Horizontal (x)</strong>
+                    <table class="freq-table" id="xFreqTable">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Freq (Hz)</th>
+                                <th>Amplitude (px)</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div>
+                    <strong>Vertical (y)</strong>
+                    <table class="freq-table" id="yFreqTable">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Freq (Hz)</th>
+                                <th>Amplitude (px)</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <p class="hint">Each row's x/y pair shares one phase (below). Unchecking a row zeroes that axis'
+                contribution but keeps the other axis at that index active.</p>
+        </section>
+
+        <section class="panel">
+            <h2>Phase</h2>
+            <div class="radio-row">
+                <label><input type="radio" name="phaseMode" value="random" checked> Random each run</label>
+                <label><input type="radio" name="phaseMode" value="fixed"> Fixed (set below)</label>
+                <button class="small-btn" id="randomizeFixedBtn" type="button">Randomize values</button>
+            </div>
+            <div class="phase-grid" id="phaseGrid"></div>
+            <p class="hint">Degrees, one per shared index. Only used when "Fixed" is selected above.</p>
+        </section>
+
+        <section class="panel">
+            <h2>Perturbation</h2>
+            <div class="rotation-row">
+                <label for="rotationInput">Rotation (degrees):</label>
+                <input type="number" id="rotationInput" value="0" step="1">
+            </div>
+            <p class="hint">0 = normal cursor mapping. Negative = counter-clockwise, positive = clockwise (same
+                convention as the main task's abrupt rotation).</p>
+        </section>
+
+        <div class="action-row">
+            <button class="action-btn play" id="playBtn">▶ Play Trial</button>
+            <button class="action-btn path" id="pathBtn">Generate Path</button>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         PLAY SCREEN
+         ============================================================ -->
+    <div class="play-screen hidden" id="playScreen">
+        <div class="dot user-dot" id="userDot"></div>
+        <div class="dot fly-dot" id="playFlyDot"></div>
+        <div class="hud" id="playHud">Get ready...</div>
+        <div class="countdown-timer hidden" id="countdownTimer"></div>
+        <button class="back-btn" id="playBackBtn">Esc / Back to Settings</button>
+    </div>
+
+    <!-- Trial complete modal -->
+    <div class="modal-overlay hidden" id="trialCompleteModal">
+        <div class="modal">
+            <p>Trial complete. This was a demo — nothing was recorded.</p>
+            <button class="modal-button" id="trialCompleteBtn">Back to Settings</button>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         PATH PREVIEW SCREEN
+         ============================================================ -->
+    <div class="path-screen hidden" id="pathScreen">
+        <canvas id="pathCanvas"></canvas>
+        <div class="dot fly-dot" id="pathFlyDot"></div>
+        <div class="hud">Previewing target path only — nothing to track here</div>
+        <button class="back-btn" id="pathBackBtn">Esc / Back to Settings</button>
+    </div>
+
+    <script type="module">
+        // ============================================================
+        // DEFAULTS — mirrors FLY_PARAMS in game.html
+        // ============================================================
+        const DEFAULTS = {
+            x: {
+                freqs: [0.075, 0.175, 0.325, 0.475, 0.725, 0.925, 1.075],
+                amplitudeMultipliers: [2.31, 2.31, 2.31, 1.76, 1.30, 0.97, 0.73],
+                scaleBase: 61,
+                smallScreenRatios: [0.21, 0.21, 0.21, 0.14, 0.09, 0.07, 0.06],
+                minDim: 1440
+            },
+            y: {
+                freqs: [0.05, 0.125, 0.275, 0.425, 0.575, 0.775, 1.025],
+                amplitudeMultipliers: [2.31, 2.31, 2.31, 1.58, 1.03, 0.81, 0.70],
+                scaleBase: 40,
+                smallScreenRatios: [0.2, 0.2, 0.2, 0.15, 0.11, 0.08, 0.06],
+                minDim: 900
+            }
+        };
+        const N = 7;
+        const SAMPLING_DT = 1000; // ms per unit t, matches game.html
+        const TRIAL_DURATION_MS = 20000;
+        const COUNTDOWN_S = 1.5;
+        const CLOSE_DISTANCE = 100;
+
+        const screenDims = { width: window.screen.width, height: window.screen.height };
+
+        function computeDefaultAmplitudes(axis) {
+            const cfg = DEFAULTS[axis];
+            const dim = axis === 'x' ? screenDims.width : screenDims.height;
+            if (dim < cfg.minDim) {
+                return cfg.smallScreenRatios.map(r => r * dim / 2);
+            }
+            return cfg.amplitudeMultipliers.map(n => cfg.scaleBase * n);
+        }
+
+        const defaultAmplitudes = { x: computeDefaultAmplitudes('x'), y: computeDefaultAmplitudes('y') };
+
+        // ============================================================
+        // BUILD SETTINGS UI
+        // ============================================================
+        function buildFreqTable(axis) {
+            const tbody = document.querySelector(`#${axis}FreqTable tbody`);
+            const freqs = DEFAULTS[axis].freqs;
+            const amps = defaultAmplitudes[axis];
+            for (let i = 0; i < N; i++) {
+                const tr = document.createElement('tr');
+                tr.id = `${axis}Row${i}`;
+                tr.innerHTML = `
+                    <td><input type="checkbox" id="${axis}Chk${i}" checked></td>
+                    <td class="freq-val">${freqs[i]}</td>
+                    <td><input type="number" id="${axis}Amp${i}" value="${amps[i].toFixed(1)}" step="1"></td>
+                `;
+                tbody.appendChild(tr);
+                const chk = tr.querySelector(`#${axis}Chk${i}`);
+                chk.addEventListener('change', () => tr.classList.toggle('disabled', !chk.checked));
+            }
+        }
+        buildFreqTable('x');
+        buildFreqTable('y');
+
+        const phaseGrid = document.getElementById('phaseGrid');
+        for (let i = 0; i < N; i++) {
+            const wrap = document.createElement('div');
+            wrap.innerHTML = `<label>φ${i + 1}</label><input type="number" id="phase${i}" value="0" step="1">`;
+            phaseGrid.appendChild(wrap);
+        }
+
+        function randomizePhaseInputs() {
+            for (let i = 0; i < N; i++) {
+                document.getElementById(`phase${i}`).value = Math.round(Math.random() * 360 - 180);
+            }
+        }
+        randomizePhaseInputs();
+        document.getElementById('randomizeFixedBtn').addEventListener('click', randomizePhaseInputs);
+
+        // ============================================================
+        // READ SETTINGS
+        // ============================================================
+        function readAxisSettings(axis) {
+            const freqs = DEFAULTS[axis].freqs;
+            const checked = [], amps = [];
+            for (let i = 0; i < N; i++) {
+                checked.push(document.getElementById(`${axis}Chk${i}`).checked);
+                amps.push(parseFloat(document.getElementById(`${axis}Amp${i}`).value) || 0);
+            }
+            return { freqs, checked, amps };
+        }
+
+        function readPhaseMode() {
+            return document.querySelector('input[name="phaseMode"]:checked').value;
+        }
+
+        function generatePhi() {
+            const mode = readPhaseMode();
+            if (mode === 'fixed') {
+                const phi = [];
+                for (let i = 0; i < N; i++) {
+                    const deg = parseFloat(document.getElementById(`phase${i}`).value) || 0;
+                    phi.push(deg * Math.PI / 180);
+                }
+                return phi;
+            }
+            const phi = [];
+            for (let i = 0; i < N; i++) phi.push(Math.random() * 2 * Math.PI - Math.PI);
+            return phi;
+        }
+
+        function readRotationDegrees() {
+            return parseFloat(document.getElementById('rotationInput').value) || 0;
+        }
+
+        // ============================================================
+        // TARGET POSITION (shared by play + path preview)
+        // ============================================================
+        function computeTargetOffset(t, phi, xSettings, ySettings) {
+            let dx = 0, dy = 0;
+            for (let i = 0; i < N; i++) {
+                const xAmp = xSettings.checked[i] ? xSettings.amps[i] : 0;
+                const yAmp = ySettings.checked[i] ? ySettings.amps[i] : 0;
+                dx += xAmp * Math.cos(2 * Math.PI * t * xSettings.freqs[i] + phi[i]);
+                dy += yAmp * Math.cos(2 * Math.PI * t * ySettings.freqs[i] + phi[i]);
+            }
+            return { dx, dy };
+        }
+
+        // ============================================================
+        // SCREEN SWITCHING
+        // ============================================================
+        const settingsScreen = document.getElementById('settingsScreen');
+        const playScreen = document.getElementById('playScreen');
+        const pathScreen = document.getElementById('pathScreen');
+        const body = document.body;
+
+        function showSettings() {
+            settingsScreen.classList.remove('hidden');
+            playScreen.classList.add('hidden');
+            pathScreen.classList.add('hidden');
+            body.classList.remove('playing');
+            if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
+        }
+
+        function goFullscreen() {
+            const docEl = document.documentElement;
+            const requestFS = docEl.requestFullscreen || docEl.webkitRequestFullscreen;
+            if (requestFS) requestFS.call(docEl).catch(() => { });
+        }
+
+        // ============================================================
+        // PLAY TRIAL
+        // ============================================================
+        const userDot = document.getElementById('userDot');
+        const playFlyDot = document.getElementById('playFlyDot');
+        const playHud = document.getElementById('playHud');
+        const countdownTimer = document.getElementById('countdownTimer');
+        const trialCompleteModal = document.getElementById('trialCompleteModal');
+
+        let trialState = null; // holds live trial data while playing
+
+        function degreesToRadians(d) { return d * Math.PI / 180; }
+
+        function centerDots(width, height) {
+            trialState.user.x = width / 2;
+            trialState.user.y = height / 2;
+            trialState.realUser.x = width / 2;
+            trialState.realUser.y = height / 2;
+            userDot.style.left = `${width / 2}px`;
+            userDot.style.top = `${height / 2}px`;
+        }
+
+        let ignoreNextMouseDelta = false;
+        function onPointerLockChange() {
+            if (document.pointerLockElement !== document.body && trialState && trialState.running) {
+                // Escape (or any unexpected loss) during a demo trial just ends it —
+                // no re-acquire loop like the real task, so Esc always gets you out.
+                endTrial(false);
+            } else if (document.pointerLockElement === document.body) {
+                ignoreNextMouseDelta = true;
+            }
+        }
+        document.addEventListener('pointerlockchange', onPointerLockChange);
+
+        function mouseMoveHandler(e) {
+            if (!trialState || !trialState.running) return;
+            if (ignoreNextMouseDelta) { ignoreNextMouseDelta = false; return; }
+            const { width, height } = screenDims;
+            if (trialState.rotationRad !== 0) {
+                const r = trialState.rotationRad;
+                const rx = e.movementX * Math.cos(r) - e.movementY * Math.sin(r);
+                const ry = e.movementX * Math.sin(r) + e.movementY * Math.cos(r);
+                trialState.user.x += rx;
+                trialState.user.y += ry;
+                trialState.realUser.x = Math.max(0, Math.min(width, trialState.realUser.x + rx));
+                trialState.realUser.y = Math.max(0, Math.min(height, trialState.realUser.y + ry));
+            } else {
+                trialState.user.x += e.movementX;
+                trialState.user.y += e.movementY;
+                trialState.realUser.x = Math.max(0, Math.min(width, trialState.realUser.x + e.movementX));
+                trialState.realUser.y = Math.max(0, Math.min(height, trialState.realUser.y + e.movementY));
+            }
+            userDot.style.left = `${trialState.realUser.x}px`;
+            userDot.style.top = `${trialState.realUser.y}px`;
+        }
+
+        function playLoop() {
+            if (!trialState || !trialState.running) return;
+            const { width, height } = screenDims;
+            const t = (Date.now() - trialState.startTime) / SAMPLING_DT;
+            const { dx, dy } = computeTargetOffset(t, trialState.phi, trialState.xSettings, trialState.ySettings);
+            const fx = dx + width / 2, fy = dy + height / 2;
+            playFlyDot.style.left = `${fx}px`;
+            playFlyDot.style.top = `${fy}px`;
+            const dist = Math.hypot(trialState.realUser.x - fx, trialState.realUser.y - fy);
+            userDot.classList.toggle('close', dist < CLOSE_DISTANCE);
+            trialState.rafId = requestAnimationFrame(playLoop);
+        }
+
+        function endTrial(showModal) {
+            if (!trialState) return;
+            trialState.running = false;
+            cancelAnimationFrame(trialState.rafId);
+            clearTimeout(trialState.endTimeout);
+            document.removeEventListener('mousemove', mouseMoveHandler);
+            if (document.pointerLockElement) document.exitPointerLock();
+            document.body.style.cursor = 'auto';
+            trialState = null;
+            if (showModal) {
+                trialCompleteModal.classList.remove('hidden');
+            } else {
+                showSettings();
+            }
+        }
+
+        function startTrial() {
+            const xSettings = readAxisSettings('x');
+            const ySettings = readAxisSettings('y');
+            const phi = generatePhi();
+            const rotationRad = degreesToRadians(readRotationDegrees());
+
+            settingsScreen.classList.add('hidden');
+            playScreen.classList.remove('hidden');
+            body.classList.add('playing');
+            goFullscreen();
+
+            trialState = {
+                xSettings, ySettings, phi, rotationRad,
+                user: { x: 0, y: 0 }, realUser: { x: 0, y: 0 },
+                running: false, rafId: null, endTimeout: null, startTime: 0
+            };
+            centerDots(screenDims.width, screenDims.height);
+            userDot.style.visibility = 'visible';
+            userDot.classList.remove('close');
+
+            // Place fly at its t=0 position while waiting out the countdown.
+            const { dx, dy } = computeTargetOffset(0, phi, xSettings, ySettings);
+            playFlyDot.style.left = `${dx + screenDims.width / 2}px`;
+            playFlyDot.style.top = `${dy + screenDims.height / 2}px`;
+
+            let remaining = COUNTDOWN_S;
+            countdownTimer.textContent = `${remaining}s`;
+            countdownTimer.classList.remove('hidden');
+            playHud.textContent = 'Get ready...';
+            const countdownInterval = setInterval(() => {
+                remaining = Math.round((remaining * 10 - 1)) / 10;
+                if (remaining <= 0) {
+                    clearInterval(countdownInterval);
+                    countdownTimer.classList.add('hidden');
+                    beginTracking();
+                } else {
+                    countdownTimer.textContent = `${remaining}s`;
+                }
+            }, 100);
+        }
+
+        function beginTracking() {
+            if (!trialState) return;
+            playHud.textContent = 'Tracking… (Esc to stop)';
+            document.body.style.cursor = 'none';
+            document.addEventListener('mousemove', mouseMoveHandler);
+            const body2 = document.body;
+            const requestPL = body2.requestPointerLock || body2.webkitRequestPointerLock;
+            if (requestPL) requestPL.call(body2);
+            trialState.running = true;
+            trialState.startTime = Date.now();
+            playLoop();
+            trialState.endTimeout = setTimeout(() => endTrial(true), TRIAL_DURATION_MS);
+        }
+
+        document.getElementById('playBtn').addEventListener('click', startTrial);
+        document.getElementById('playBackBtn').addEventListener('click', () => endTrial(false));
+        document.getElementById('trialCompleteBtn').addEventListener('click', () => {
+            trialCompleteModal.classList.add('hidden');
+            showSettings();
+        });
+
+        // ============================================================
+        // PATH PREVIEW
+        // ============================================================
+        const pathCanvas = document.getElementById('pathCanvas');
+        const pathCtx = pathCanvas.getContext('2d');
+        const pathFlyDot = document.getElementById('pathFlyDot');
+        let pathState = null;
+
+        function resizePathCanvas() {
+            pathCanvas.width = window.innerWidth;
+            pathCanvas.height = window.innerHeight;
+        }
+
+        function pathLoop() {
+            if (!pathState || !pathState.running) return;
+            const t = (Date.now() - pathState.startTime) / SAMPLING_DT;
+            const { dx, dy } = computeTargetOffset(t, pathState.phi, pathState.xSettings, pathState.ySettings);
+            const fx = dx + screenDims.width / 2;
+            const fy = dy + screenDims.height / 2;
+            // Canvas is sized to the browser window, which can be smaller than
+            // window.screen — scale the trajectory into canvas space so the
+            // whole path is visible rather than clipped.
+            const sx = fx * (pathCanvas.width / screenDims.width);
+            const sy = fy * (pathCanvas.height / screenDims.height);
+
+            if (pathState.hasLast) {
+                pathCtx.beginPath();
+                pathCtx.moveTo(pathState.lastX, pathState.lastY);
+                pathCtx.lineTo(sx, sy);
+                pathCtx.strokeStyle = 'rgba(37, 99, 235, 0.55)';
+                pathCtx.lineWidth = 2;
+                pathCtx.stroke();
+            }
+            pathState.lastX = sx;
+            pathState.lastY = sy;
+            pathState.hasLast = true;
+
+            pathFlyDot.style.left = `${sx}px`;
+            pathFlyDot.style.top = `${sy}px`;
+
+            pathState.rafId = requestAnimationFrame(pathLoop);
+        }
+
+        function startPathPreview() {
+            const xSettings = readAxisSettings('x');
+            const ySettings = readAxisSettings('y');
+            const phi = generatePhi();
+
+            settingsScreen.classList.add('hidden');
+            pathScreen.classList.remove('hidden');
+            resizePathCanvas();
+            pathCtx.clearRect(0, 0, pathCanvas.width, pathCanvas.height);
+
+            pathState = { xSettings, ySettings, phi, running: true, rafId: null, startTime: Date.now(), hasLast: false, lastX: 0, lastY: 0 };
+            pathLoop();
+        }
+
+        function endPathPreview() {
+            if (pathState) {
+                pathState.running = false;
+                cancelAnimationFrame(pathState.rafId);
+                pathState = null;
+            }
+            showSettings();
+        }
+
+        window.addEventListener('resize', () => { if (pathState) resizePathCanvas(); });
+
+        document.getElementById('pathBtn').addEventListener('click', startPathPreview);
+        document.getElementById('pathBackBtn').addEventListener('click', endPathPreview);
+
+        // Escape doesn't fire a normal keydown while pointer-locked (browser
+        // intercepts it to release the lock, handled above), but the path
+        // preview never locks the pointer, so it needs its own Escape handler.
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && pathState) endPathPreview();
+        });
+    </script>
+</body>
+
+</html>
