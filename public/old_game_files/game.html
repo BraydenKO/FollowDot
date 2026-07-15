@@ -304,7 +304,7 @@
         </div>
     </div>
 
-    <!-- Dial modal shown right as washout begins: teaches participant controls are normal again -->
+    <!-- Dial modal for pre-washout stage questionnaire -->
     <div class="modal-overlay hidden" id="dialModal">
         <div class="modal" style="width: 450px; padding: 25px 25px 20px;">
             <p id="dialQuestion" style="font-weight: 600; font-size: 16px; margin-bottom: 8px;">
@@ -350,32 +350,17 @@
         // ============================================================
         // CONFIGURATION
         // ============================================================
-
-        // 'low' or 'high' — hardcoded and flipped manually between data-collection
-        // waves (starting with 'high'; 'low' comes later once high is validated).
-        const FREQUENCY_MODE = 'high';
-
-        function buildCollectionName(mode, degreesPerTrial) {
-            const hand = (localStorage.getItem('hand_to_use') || 'right').toLowerCase();
-            const dir = degreesPerTrial > 0 ? 'cw' : 'ccw';
-            return `experiment_v2_${mode}_noFB_${hand}_${dir}`;
-        }
-
         const CONFIG = {
-            frequencyMode: FREQUENCY_MODE,
-
             perturbation: {
-                degreesPerTrial: 1,
-                maxDegrees: 30,
+                degreesPerTrial: -1,
+                maxDegrees: -30,
             },
 
             trials: {
                 baseline: 16,
                 rampUp: 30,
-                holdFB: 6,
-                holdNoFB: 6,
-                recalibrate: 1,
-                washout: 4,
+                hold: 6,
+                aftereffect: 4,
             },
 
             durations: {
@@ -396,9 +381,7 @@
             },
 
             feedback: {
-                // Applies only to baseline trials (alternating pattern). Every other
-                // phase has a fixed feedback state: rampUp/holdFB/recalibrate always
-                // have feedback, holdNoFB/washout never do.
+                // Applies to baseline/rampUp/hold trials (aftereffect is always no-feedback).
                 // 0 = every trial has feedback (cursor always visible).
                 // 1 = no trial has feedback (cursor never visible).
                 // N >= 2 = every Nth trial (1-indexed within the phase) has no feedback.
@@ -421,10 +404,8 @@
                 },
                 trialComplete: "Good job! Click OK to continue the game.",
                 baselineToRamp: "Great job! The controls may start to feel different. Try to adapt as you go. Click OK to continue.",
-                rampToHoldFB: "Great job! Keep going! Click OK to continue.",
-                holdFBToHoldNoFB: "Great job! Your cursor will disappear for the next few trials. Keep aiming the same way you have been. Click OK to continue.",
-                holdNoFBToRecalibrate: "Great job! Your cursor is back for a couple more trials. Click OK to continue.",
-                recalibrateToWashout: "Great job! Now your controls are back to normal. Your cursor will disappear during these next trials, try your best to aim directly toward the fly. Click OK to continue.",
+                rampToHold: "Great job! Keep going! Click OK to continue.",
+                holdToAftereffect: "Great job! Now your controls are back to normal. Your cursor will disappear during these next trials, try your best to aim directly toward the fly. Click OK to continue.",
                 uploading: "Please wait for data to be processed and uploaded..."
             },
 
@@ -435,52 +416,43 @@
             },
 
             firebase: {
-                // Assigned right after CONFIG below, once perturbation direction is known.
-                experimentCollection: null,
+                experimentCollection: localStorage.getItem('collection_name'),
                 trialsSubcollection: "trials",
                 documentPrefixes: {
                     baseline: "baseline",
                     rampUp: "ramp",
-                    holdFB: "hold_fb",
-                    holdNoFB: "hold_nofb",
-                    recalibrate: "recalibrate",
-                    washout: "washout"
+                    hold: "hold",
+                    aftereffect: "aftereffect"
                 },
                 trialsPerUpload: 4
             }
         };
 
-        CONFIG.firebase.experimentCollection = buildCollectionName(CONFIG.frequencyMode, CONFIG.perturbation.degreesPerTrial);
+        let currentSeed = 67;
+        function seededRandom() {
+            let t = currentSeed += 0x6D2B79F5;
+            t = Math.imul(t ^ t >>> 15, t | 1);
+            t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+            return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        }
 
-        // ============================================================
-        // FREQUENCY / AMPLITUDE POOLS
-        // ============================================================
-        // Frequencies are exact multiples of 1/30 Hz — the native DFT bin spacing
-        // for a 30s trial at 20Hz — so every pair of distinct frequencies here is
-        // exactly orthogonal (zero spectral leakage) in a single-trial FFT, with no
-        // zero-padding trick required. Each pool alternates its 6 values by rank
-        // (sorted descending) onto the two axes: x takes ranks 1/3/5, y takes 2/4/6.
-        // Frequencies stay fixed for the whole experiment; only the pairing of
-        // amplitude-to-frequency within an axis is reshuffled every trial (see
-        // generateTrialAmplitudes), so the manipulation is "learn this range" rather
-        // than "learn these specific trajectories."
-        const FREQUENCY_MODES = {
-            low: {
-                frequencies: { x: [2 / 30, 4 / 30, 6 / 30], y: [1 / 30, 3 / 30, 5 / 30] },
-                amplitudeSets: { x: [2.22, 2.03, 1.85], y: [2.31, 2.13, 1.94] }
-            },
-            high: {
-                frequencies: { x: [30 / 30, 28 / 30, 26 / 30], y: [29 / 30, 27 / 30, 25 / 30] },
-                amplitudeSets: { x: [0.85, 0.96, 1.07], y: [0.73, 0.76, 0.78] }
-            }
-        };
 
         const FLY_PARAMS = {
-            frequencies: FREQUENCY_MODES[CONFIG.frequencyMode].frequencies,
-            amplitudeSets: FREQUENCY_MODES[CONFIG.frequencyMode].amplitudeSets,
+            amplitudes: {
+                y: [2.31, 2.31, 2.31, 1.58, 1.03, 0.81, 0.70],
+                x: [2.31, 2.31, 2.31, 1.76, 1.30, 0.97, 0.73]
+            },
+            frequencies: {
+                // Halved relative to game_old.html: that version used dt=2000, which
+                // implicitly halved these frequencies (t advanced at half the real-time
+                // rate). Now that dt=1000 makes t track real seconds, the constants are
+                // halved here so the fly moves at the same actual speed as before.
+                y: [0.05, 0.125, 0.275, 0.425, 0.575, 0.775, 1.025],
+                x: [0.075, 0.175, 0.325, 0.475, 0.725, 0.925, 1.075]
+            },
             scaleFactors: {
-                y: { base: 40 },
-                x: { base: 61 }
+                y: { base: 40, smallScreenRatios: [0.2, 0.2, 0.2, 0.15, 0.11, 0.08, 0.06] },
+                x: { base: 61, smallScreenRatios: [0.21, 0.21, 0.21, 0.14, 0.09, 0.07, 0.06] }
             },
             minDimensions: { width: 1440, height: 900 }
         };
@@ -511,8 +483,6 @@
             },
             allDistances: [],
             phis: [],
-            trialAmplitudes: [],
-            currentAmplitudes: null,
             animationFrame: null,
             recordingInterval: null,
             currentMouseHandler: null,
@@ -533,35 +503,24 @@
         // ============================================================
         // COMPUTED VALUES
         // ============================================================
-        function shuffleArray(arr) {
-            const a = arr.slice();
-            for (let i = a.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [a[i], a[j]] = [a[j], a[i]];
-            }
-            return a;
-        }
-
-        // Freshly reshuffles which amplitude pairs with which frequency, per axis,
-        // per trial, per participant (Math.random() — no shared seed). Small-screen
-        // scaling is proportional to the large-screen base rather than a separate
-        // hand-picked ratio table, since it's mathematically equivalent: at the
-        // minDimensions boundary, base*amplitude*(dimension/minDimension) reduces to
-        // base*amplitude exactly.
-        function generateTrialAmplitudes() {
+        function computeAmplitudes() {
             const { width, height } = state.screen;
-            const { amplitudeSets, scaleFactors, minDimensions } = FLY_PARAMS;
-            const scaleY = scaleFactors.y.base * Math.min(1, height / minDimensions.height);
-            const scaleX = scaleFactors.x.base * Math.min(1, width / minDimensions.width);
-            const rawX = shuffleArray(amplitudeSets.x);
-            const rawY = shuffleArray(amplitudeSets.y);
-            return {
-                a_x: rawX.map(n => n * scaleX),
-                a_y: rawY.map(n => n * scaleY),
-                rawX, rawY
-            };
+            const { amplitudes, scaleFactors, minDimensions } = FLY_PARAMS;
+            let a_y, a_x;
+            if (height < minDimensions.height) {
+                a_y = scaleFactors.y.smallScreenRatios.map(r => r * height / 2);
+            } else {
+                a_y = amplitudes.y.map(n => scaleFactors.y.base * n);
+            }
+            if (width < minDimensions.width) {
+                a_x = scaleFactors.x.smallScreenRatios.map(r => r * width / 2);
+            } else {
+                a_x = amplitudes.x.map(n => scaleFactors.x.base * n);
+            }
+            return { a_x, a_y };
         }
 
+        const amplitudes = computeAmplitudes();
         const samplingDelay = 1000 / CONFIG.sampling.rate;
 
         // ============================================================
@@ -735,20 +694,19 @@
         // ============================================================
         function generatePhi() {
             const phi = [];
-            for (let i = 0; i < 3; i++) {
-                // Genuinely per-participant random (Math.random(), no shared seed) so
-                // no two participants see the identical trajectory on the same trial.
-                phi.push(Math.random() * 2 * Math.PI - Math.PI);
+            for (let i = 0; i < 7; i++) {
+                // Use seededRandom() instead of Math.random() so that it's constant across users
+                phi.push(seededRandom() * 2 * Math.PI - Math.PI);
             }
             return phi;
         }
 
         function updateFlyPosition(t, phi) {
             const { width, height } = state.screen;
-            const { a_x, a_y } = state.currentAmplitudes;
+            const { a_x, a_y } = amplitudes;
             const { frequencies } = FLY_PARAMS;
             let dx = 0, dy = 0;
-            for (let i = 0; i < 3; i++) {
+            for (let i = 0; i < 7; i++) {
                 dx += a_x[i] * Math.cos(2 * Math.PI * t * frequencies.x[i] + phi[i]);
                 dy += a_y[i] * Math.cos(2 * Math.PI * t * frequencies.y[i] + phi[i]);
             }
@@ -953,7 +911,6 @@
         }
 
         function saveTrialData() {
-            const trialAmp = state.trialAmplitudes[state.trialAmplitudes.length - 1];
             state.trials[state.trialIndex] = {
                 userPositions: state.currentTrialData.userPositions,
                 flyPositions: state.currentTrialData.flyPositions,
@@ -961,10 +918,7 @@
                 phase: state.currentPhase,
                 rotationDegrees: state.currentRotationDegrees,
                 phaseTrialIndex: state.phaseTrialIndex,
-                hasFeedback: state.currentHasFeedback,
-                frequencyMode: CONFIG.frequencyMode,
-                frequencies: FLY_PARAMS.frequencies,
-                amplitudesUsed: trialAmp ? { x: trialAmp.rawX, y: trialAmp.rawY } : null
+                hasFeedback: state.currentHasFeedback
             };
             state.allDistances.push(state.currentTrialData.distances);
             state.currentTrialData = { userPositions: [], flyPositions: [], distances: [], rotationDegrees: 0 };
@@ -998,8 +952,7 @@
                 oderId, visitorUid: auth.currentUser.uid, prolificId,
                 createdAt: Timestamp.fromDate(new Date()),
                 screenWidth: state.screen.width, screenHeight: state.screen.height,
-                trialConfig: CONFIG.trials, perturbationConfig: CONFIG.perturbation,
-                frequencyMode: CONFIG.frequencyMode
+                trialConfig: CONFIG.trials, perturbationConfig: CONFIG.perturbation
             }, { merge: true });
             const trialsCollectionRef = collection(db, experimentCollection, oderId, trialsSubcollection);
             const trialDocRef = doc(trialsCollectionRef, docName);
@@ -1069,10 +1022,8 @@
             switch (phase) {
                 case "baseline": state.currentRotationDegrees = 0; break;
                 case "rampUp": state.currentRotationDegrees = (trialIndexInPhase + 1) * degreesPerTrial; break;
-                case "holdFB": state.currentRotationDegrees = maxDegrees; break;
-                case "holdNoFB": state.currentRotationDegrees = maxDegrees; break;
-                case "recalibrate": state.currentRotationDegrees = maxDegrees; break;
-                case "washout": state.currentRotationDegrees = 0; break;
+                case "hold": state.currentRotationDegrees = maxDegrees; break;
+                case "aftereffect": state.currentRotationDegrees = 0; break;
                 default: state.currentRotationDegrees = 0;
             }
             console.log(`Phase: ${phase}, Trial: ${trialIndexInPhase + 1}, Rotation: ${state.currentRotationDegrees}°`);
@@ -1092,11 +1043,9 @@
             trialQueue = [];
             const phases = [
                 { name: "baseline", count: CONFIG.trials.baseline, next: "rampUp", msg: CONFIG.messages.baselineToRamp },
-                { name: "rampUp", count: CONFIG.trials.rampUp, next: "holdFB", msg: CONFIG.messages.rampToHoldFB },
-                { name: "holdFB", count: CONFIG.trials.holdFB, next: "holdNoFB", msg: CONFIG.messages.holdFBToHoldNoFB },
-                { name: "holdNoFB", count: CONFIG.trials.holdNoFB, next: "recalibrate", msg: CONFIG.messages.holdNoFBToRecalibrate },
-                { name: "recalibrate", count: CONFIG.trials.recalibrate, next: "washout", msg: CONFIG.messages.recalibrateToWashout },
-                { name: "washout", count: CONFIG.trials.washout, next: "done", msg: "" }
+                { name: "rampUp", count: CONFIG.trials.rampUp, next: "hold", msg: CONFIG.messages.rampToHold },
+                { name: "hold", count: CONFIG.trials.hold, next: "aftereffect", msg: CONFIG.messages.holdToAftereffect },
+                { name: "aftereffect", count: CONFIG.trials.aftereffect, next: "done", msg: "" }
             ];
             let globalIndex = 0;
             phases.forEach(p => {
@@ -1104,7 +1053,7 @@
                     let hasFeedback = true;
                     if (p.name === "baseline") {
                         hasFeedback = computeHasFeedback(i);
-                    } else if (p.name === "holdNoFB" || p.name === "washout") {
+                    } else if (p.name === "aftereffect") {
                         hasFeedback = false;
                     }
                     trialQueue.push({
@@ -1131,8 +1080,6 @@
 
             const phi = generatePhi();
             state.phis.push(phi);
-            state.currentAmplitudes = generateTrialAmplitudes();
-            state.trialAmplitudes.push(state.currentAmplitudes);
             placeFlyAtStart();
 
             state.user.x = state.screen.width / 2;
@@ -1181,11 +1128,11 @@
 
             const nextTrial = trialQueue[state.trialIndex]; // Note: saveTrialData increments state.trialIndex
 
-            if (trial.phase === "recalibrate" && nextTrial && nextTrial.phase === "washout") {
+            if (trial.phase === "hold" && nextTrial && nextTrial.phase === "aftereffect") {
                 const phaseStartIndex = trialQueue.findIndex(t => t.phase === trial.phase);
                 await uploadPhaseData(trial.phase, phaseStartIndex, state.trialIndex);
                 await showPreWashoutDialModal();
-                await showModal(lowMovementPrefix + CONFIG.messages.recalibrateToWashout);
+                await showModal(lowMovementPrefix + CONFIG.messages.holdToAftereffect);
                 await showDialModal();
             } else if (trial.isLastOfPhase) {
                 const phaseStartIndex = trialQueue.findIndex(t => t.phase === trial.phase);
@@ -1194,7 +1141,7 @@
                     await showModal(lowMovementPrefix + trial.transitionMessage);
                 }
             } else {
-                if (nextTrial && !nextTrial.hasFeedback && nextTrial.phase !== "washout") {
+                if (nextTrial && !nextTrial.hasFeedback && nextTrial.phase !== "aftereffect") {
                     await showModal(lowMovementPrefix + "Good job! On the next trial, you won't see your cursor. Do your best to aim towards the fly.");
                 } else {
                     await showModal(lowMovementPrefix + CONFIG.messages.trialComplete);
@@ -1508,7 +1455,7 @@
             panel.className = 'admin-panel';
             panel.innerHTML = `
                 <div class="admin-panel-header" id="adminHeader">
-                    <span>🛠️ Dev Mode (${CONFIG.frequencyMode})</span>
+                    <span>🛠️ Dev Mode</span>
                     <span id="adminToggleArrow">▼</span>
                 </div>
                 <div class="admin-panel-body">
@@ -1516,24 +1463,20 @@
                         <label>Trial Counts</label>
                         <div class="admin-input-row">
                             <input class="admin-input" type="number" id="adminBase" placeholder="Base" value="${CONFIG.trials.baseline}">
+                            <input class="admin-input" type="number" id="adminHold" placeholder="Hold" value="${CONFIG.trials.hold}">
+                        </div>
+                        <div class="admin-input-row" style="margin-top: 6px;">
                             <input class="admin-input" type="number" id="adminRamp" placeholder="Ramp" value="${CONFIG.trials.rampUp}">
-                        </div>
-                        <div class="admin-input-row" style="margin-top: 6px;">
-                            <input class="admin-input" type="number" id="adminHoldFB" placeholder="Hold FB" value="${CONFIG.trials.holdFB}">
-                            <input class="admin-input" type="number" id="adminHoldNoFB" placeholder="Hold NoFB" value="${CONFIG.trials.holdNoFB}">
-                        </div>
-                        <div class="admin-input-row" style="margin-top: 6px;">
-                            <input class="admin-input" type="number" id="adminRecalibrate" placeholder="Recalibrate" value="${CONFIG.trials.recalibrate}">
-                            <input class="admin-input" type="number" id="adminWashout" placeholder="Washout" value="${CONFIG.trials.washout}">
+                            <input class="admin-input" type="number" id="adminAfter" placeholder="After" value="${CONFIG.trials.aftereffect}">
                         </div>
                         <div class="admin-input-row" style="margin-top: 6px; grid-template-columns: 1fr;">
                             <input class="admin-input" type="number" id="adminNoFeedbackN" placeholder="No-feedback every N (0=always, 1=never)" value="${CONFIG.feedback.noFeedbackEveryN}" min="0">
                         </div>
                         <button class="admin-btn" id="adminApplyCounts" style="margin-top: 6px;">Apply Counts</button>
                     </div>
-
+                    
                     <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 5px 0;">
-
+                    
                     <div class="admin-input-group">
                         <label id="adminSkipLabel">Skip to Trial (0 to ${trialQueue.length - 1})</label>
                         <div style="display: flex; gap: 8px;">
@@ -1541,7 +1484,7 @@
                             <button class="admin-btn" id="adminSkipBtn">Go</button>
                         </div>
                     </div>
-
+                    
                     <button class="admin-btn admin-btn-secondary" id="adminSkipCurrentBtn">Skip Current Trial</button>
                 </div>
             `;
@@ -1556,19 +1499,15 @@
 
             document.getElementById('adminApplyCounts').addEventListener('click', () => {
                 const base = parseInt(document.getElementById('adminBase').value) || 0;
+                const hold = parseInt(document.getElementById('adminHold').value) || 0;
                 const ramp = parseInt(document.getElementById('adminRamp').value) || 0;
-                const holdFB = parseInt(document.getElementById('adminHoldFB').value) || 0;
-                const holdNoFB = parseInt(document.getElementById('adminHoldNoFB').value) || 0;
-                const recalibrate = parseInt(document.getElementById('adminRecalibrate').value) || 0;
-                const washout = parseInt(document.getElementById('adminWashout').value) || 0;
+                const after = parseInt(document.getElementById('adminAfter').value) || 0;
                 const noFeedbackN = parseInt(document.getElementById('adminNoFeedbackN').value);
 
                 CONFIG.trials.baseline = base;
+                CONFIG.trials.hold = hold;
                 CONFIG.trials.rampUp = ramp;
-                CONFIG.trials.holdFB = holdFB;
-                CONFIG.trials.holdNoFB = holdNoFB;
-                CONFIG.trials.recalibrate = recalibrate;
-                CONFIG.trials.washout = washout;
+                CONFIG.trials.aftereffect = after;
                 CONFIG.feedback.noFeedbackEveryN = isNaN(noFeedbackN) ? CONFIG.feedback.noFeedbackEveryN : noFeedbackN;
 
                 buildTrialQueue();
@@ -1612,18 +1551,17 @@
                 return acc;
             }, []);
 
-            const phaseCounts = [
-                trials.baseline,
-                trials.baseline + trials.rampUp,
-                trials.baseline + trials.rampUp + trials.holdFB,
-                trials.baseline + trials.rampUp + trials.holdFB + trials.holdNoFB,
-                trials.baseline + trials.rampUp + trials.holdFB + trials.holdNoFB + trials.recalibrate,
-                trials.baseline + trials.rampUp + trials.holdFB + trials.holdNoFB + trials.recalibrate + trials.washout
+            const idx1 = Math.max(0, Math.min(cumulativeLengths.length - 1, trials.baseline - 1));
+            const idx2 = Math.max(0, Math.min(cumulativeLengths.length - 1, trials.baseline + trials.rampUp - 1));
+            const idx3 = Math.max(0, Math.min(cumulativeLengths.length - 1, trials.baseline + trials.rampUp + trials.hold - 1));
+            const idx4 = Math.max(0, Math.min(cumulativeLengths.length - 1, trials.baseline + trials.rampUp + trials.hold + trials.aftereffect - 1));
+
+            const highlights = [
+                cumulativeLengths[idx1] || 0,
+                cumulativeLengths[idx2] || 0,
+                cumulativeLengths[idx3] || 0,
+                cumulativeLengths[idx4] || 0
             ];
-            const highlights = phaseCounts.map(count => {
-                const idx = Math.max(0, Math.min(cumulativeLengths.length - 1, count - 1));
-                return cumulativeLengths[idx] || 0;
-            });
             return { flatDistances, highlights };
         }
 
@@ -1635,7 +1573,7 @@
             localStorage.setItem('percentages', JSON.stringify(percentages));
             localStorage.setItem('distances', JSON.stringify(flatDistances));
             localStorage.setItem('game_config', JSON.stringify({
-                trials: CONFIG.trials, durations: CONFIG.durations, perturbation: CONFIG.perturbation, frequencyMode: CONFIG.frequencyMode
+                trials: CONFIG.trials, durations: CONFIG.durations, perturbation: CONFIG.perturbation
             }));
             localStorage.setItem('highlights', JSON.stringify(highlights));
             if (state.canNavigate) window.location.href = CONFIG.navigation.completionPage;
