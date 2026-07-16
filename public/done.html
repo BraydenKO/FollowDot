@@ -871,17 +871,27 @@
             // Line Chart - Distance Over Time
             if (distances.length) {
                 const ctxLine = document.getElementById('distanceChart').getContext('2d');
-                
-                // Build phase annotations
+
+                // Build phase annotations generically from whatever phase structure
+                // the game reported -- no assumptions about specific phase names
+                // or count, so different games' trial structures all render here
+                // without needing changes to this file.
                 const annotations = {};
-                const phaseColors = [
-                    'rgba(34, 197, 94, 0.15)',   // Baseline - green
-                    'rgba(251, 146, 60, 0.15)',  // Ramp - orange
-                    'rgba(239, 68, 68, 0.15)',   // Hold - red
-                    'rgba(34, 197, 94, 0.15)'    // Aftereffect - green
+                const PHASE_COLOR_PALETTE = [
+                    'rgba(34, 197, 94, 0.15)',   // green
+                    'rgba(249, 115, 22, 0.15)',  // orange
+                    'rgba(239, 68, 68, 0.15)',   // red
+                    'rgba(168, 85, 247, 0.15)',  // purple
+                    'rgba(234, 179, 8, 0.15)',   // amber
+                    'rgba(59, 130, 246, 0.15)'   // blue
                 ];
-                const phaseLabels = ['Baseline', 'Ramp Up', 'Hold', 'Aftereffect'];
-                
+                function humanizePhaseName(name) {
+                    return name.replace(/([A-Z]+)/g, ' $1').replace(/^./, c => c.toUpperCase()).trim();
+                }
+                const phaseOrder = gameConfig.phaseOrder || Object.keys(gameConfig.trials || {});
+                const phaseLabels = phaseOrder.map(humanizePhaseName);
+                const phaseColors = phaseOrder.map((_, i) => PHASE_COLOR_PALETTE[i % PHASE_COLOR_PALETTE.length]);
+
                 let prevEnd = 0;
                 highlights.forEach((end, i) => {
                     if (end > prevEnd) {

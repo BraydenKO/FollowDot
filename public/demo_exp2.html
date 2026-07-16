@@ -109,10 +109,6 @@
             background: #f7f7f7;
         }
 
-        .freq-val {
-            color: #555;
-        }
-
         .radio-row {
             display: flex;
             gap: 18px;
@@ -399,7 +395,14 @@
                 </div>
             </div>
             <p class="hint">Each row's x/y pair shares one phase (below). Unchecking a row zeroes that axis'
-                contribution but keeps the other axis at that index active.</p>
+                contribution but keeps the other axis at that index active. Frequencies are editable — type in
+                anything you want to test.</p>
+            <div class="radio-row" style="margin-top: 10px;">
+                <button class="small-btn" id="setLowRangeBtn" type="button">Set Low Range</button>
+                <button class="small-btn" id="setHighRangeBtn" type="button">Set High Range</button>
+                <span class="hint" style="margin: 0;">Loads game.html's current low/high frequency pool (3 active
+                    rows per axis) with a fresh random amplitude-to-frequency shuffle, same as a real trial.</span>
+            </div>
         </section>
 
         <section class="panel">
@@ -409,8 +412,12 @@
                 <label><input type="radio" name="phaseMode" value="fixed"> Fixed (set below)</label>
                 <button class="small-btn" id="randomizeFixedBtn" type="button">Randomize values</button>
             </div>
-            <div class="phase-grid" id="phaseGrid"></div>
-            <p class="hint">Degrees, one per shared index. Only used when "Fixed" is selected above.</p>
+            <strong style="font-size: 0.85em; color: #666;">Horizontal (x) phase</strong>
+            <div class="phase-grid" id="phaseGridX"></div>
+            <strong style="font-size: 0.85em; color: #666;">Vertical (y) phase</strong>
+            <div class="phase-grid" id="phaseGridY"></div>
+            <p class="hint">Degrees. x and y phases are independent (not shared per index) — matches game.html.
+                Only used when "Fixed" is selected above.</p>
         </section>
 
         <section class="panel">
@@ -478,6 +485,30 @@
                 minDim: 900
             }
         };
+        // Low/high frequency-mode pools, mirrored from FREQUENCY_MODES in game.html.
+        // Amplitudes here are the raw (pre-scale) multipliers, same as DEFAULTS above --
+        // converted to pixel amplitudes at apply-time via each axis's scaleBase, matching
+        // how the game itself scales them.
+        const RANGE_PRESETS = {
+            low: {
+                x: { freqs: [2 / 30, 4 / 30, 6 / 30], amplitudeMultipliers: [2.22, 2.03, 1.85] },
+                y: { freqs: [1 / 30, 3 / 30, 5 / 30], amplitudeMultipliers: [2.31, 2.13, 1.94] }
+            },
+            high: {
+                x: { freqs: [40 / 30, 42 / 30, 44 / 30], amplitudeMultipliers: [0.85, 0.96, 1.07] },
+                y: { freqs: [39 / 30, 41 / 30, 43 / 30], amplitudeMultipliers: [0.73, 0.76, 0.78] }
+            }
+        };
+
+        function shuffle(arr) {
+            const a = arr.slice();
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        }
+
         const N = 7;
         const SAMPLING_DT = 1000; // ms per unit t, matches game.html
         const TRIAL_DURATION_MS = 20000;
@@ -509,7 +540,7 @@
                 tr.id = `${axis}Row${i}`;
                 tr.innerHTML = `
                     <td><input type="checkbox" id="${axis}Chk${i}" checked></td>
-                    <td class="freq-val">${freqs[i]}</td>
+                    <td><input type="number" id="${axis}Freq${i}" value="${freqs[i]}" step="0.001"></td>
                     <td><input type="number" id="${axis}Amp${i}" value="${amps[i].toFixed(1)}" step="1"></td>
                 `;
                 tbody.appendChild(tr);
@@ -520,16 +551,48 @@
         buildFreqTable('x');
         buildFreqTable('y');
 
-        const phaseGrid = document.getElementById('phaseGrid');
-        for (let i = 0; i < N; i++) {
-            const wrap = document.createElement('div');
-            wrap.innerHTML = `<label>φ${i + 1}</label><input type="number" id="phase${i}" value="0" step="1">`;
-            phaseGrid.appendChild(wrap);
+        // Loads a fixed low/high frequency pool into the first 3 rows of each
+        // axis (unchecking the rest, since these modes only use 3 per axis),
+        // with a fresh random amplitude<->frequency shuffle per axis -- same
+        // mechanism as generateTrialAmplitudes() in game.html.
+        function applyRangePreset(mode) {
+            const preset = RANGE_PRESETS[mode];
+            for (const axis of ['x', 'y']) {
+                const { freqs, amplitudeMultipliers } = preset[axis];
+                const scaleBase = DEFAULTS[axis].scaleBase;
+                const shuffledAmps = shuffle(amplitudeMultipliers.map(m => m * scaleBase));
+                for (let i = 0; i < N; i++) {
+                    const chk = document.getElementById(`${axis}Chk${i}`);
+                    const row = document.getElementById(`${axis}Row${i}`);
+                    const active = i < freqs.length;
+                    chk.checked = active;
+                    row.classList.toggle('disabled', !active);
+                    if (active) {
+                        document.getElementById(`${axis}Freq${i}`).value = freqs[i];
+                        document.getElementById(`${axis}Amp${i}`).value = shuffledAmps[i].toFixed(1);
+                    }
+                }
+            }
         }
+        document.getElementById('setLowRangeBtn').addEventListener('click', () => applyRangePreset('low'));
+        document.getElementById('setHighRangeBtn').addEventListener('click', () => applyRangePreset('high'));
+
+        function buildPhaseGrid(axis) {
+            const grid = document.getElementById(`phaseGrid${axis.toUpperCase()}`);
+            for (let i = 0; i < N; i++) {
+                const wrap = document.createElement('div');
+                wrap.innerHTML = `<label>φ${axis}${i + 1}</label><input type="number" id="phase${axis.toUpperCase()}${i}" value="0" step="1">`;
+                grid.appendChild(wrap);
+            }
+        }
+        buildPhaseGrid('x');
+        buildPhaseGrid('y');
 
         function randomizePhaseInputs() {
-            for (let i = 0; i < N; i++) {
-                document.getElementById(`phase${i}`).value = Math.round(Math.random() * 360 - 180);
+            for (const axis of ['X', 'Y']) {
+                for (let i = 0; i < N; i++) {
+                    document.getElementById(`phase${axis}${i}`).value = Math.round(Math.random() * 360 - 180);
+                }
             }
         }
         randomizePhaseInputs();
@@ -539,9 +602,9 @@
         // READ SETTINGS
         // ============================================================
         function readAxisSettings(axis) {
-            const freqs = DEFAULTS[axis].freqs;
-            const checked = [], amps = [];
+            const freqs = [], checked = [], amps = [];
             for (let i = 0; i < N; i++) {
+                freqs.push(parseFloat(document.getElementById(`${axis}Freq${i}`).value) || 0);
                 checked.push(document.getElementById(`${axis}Chk${i}`).checked);
                 amps.push(parseFloat(document.getElementById(`${axis}Amp${i}`).value) || 0);
             }
@@ -554,17 +617,25 @@
 
         function generatePhi() {
             const mode = readPhaseMode();
+            // Independent per-axis phases -- x[i] and y[i] already oscillate at
+            // different frequencies, so matches game.html's generatePhi().
             if (mode === 'fixed') {
-                const phi = [];
-                for (let i = 0; i < N; i++) {
-                    const deg = parseFloat(document.getElementById(`phase${i}`).value) || 0;
-                    phi.push(deg * Math.PI / 180);
-                }
-                return phi;
+                const readAxis = (axis) => {
+                    const arr = [];
+                    for (let i = 0; i < N; i++) {
+                        const deg = parseFloat(document.getElementById(`phase${axis}${i}`).value) || 0;
+                        arr.push(deg * Math.PI / 180);
+                    }
+                    return arr;
+                };
+                return { x: readAxis('X'), y: readAxis('Y') };
             }
-            const phi = [];
-            for (let i = 0; i < N; i++) phi.push(Math.random() * 2 * Math.PI - Math.PI);
-            return phi;
+            const randomAxis = () => {
+                const arr = [];
+                for (let i = 0; i < N; i++) arr.push(Math.random() * 2 * Math.PI - Math.PI);
+                return arr;
+            };
+            return { x: randomAxis(), y: randomAxis() };
         }
 
         function readRotationDegrees() {
@@ -579,8 +650,8 @@
             for (let i = 0; i < N; i++) {
                 const xAmp = xSettings.checked[i] ? xSettings.amps[i] : 0;
                 const yAmp = ySettings.checked[i] ? ySettings.amps[i] : 0;
-                dx += xAmp * Math.cos(2 * Math.PI * t * xSettings.freqs[i] + phi[i]);
-                dy += yAmp * Math.cos(2 * Math.PI * t * ySettings.freqs[i] + phi[i]);
+                dx += xAmp * Math.cos(2 * Math.PI * t * xSettings.freqs[i] + phi.x[i]);
+                dy += yAmp * Math.cos(2 * Math.PI * t * ySettings.freqs[i] + phi.y[i]);
             }
             return { dx, dy };
         }

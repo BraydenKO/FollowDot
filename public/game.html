@@ -358,7 +358,7 @@
         function buildCollectionName(mode, degreesPerTrial) {
             const hand = (localStorage.getItem('hand_to_use') || 'right').toLowerCase();
             const dir = degreesPerTrial > 0 ? 'cw' : 'ccw';
-            return `experiment_v2_${mode}_noFB_${hand}_${dir}`;
+            return `experiments_v2_${mode}_noFB_${hand}_${dir}`;
         }
 
         const CONFIG = {
@@ -372,9 +372,12 @@
             trials: {
                 baseline: 16,
                 rampUp: 30,
-                holdFB: 6,
-                holdNoFB: 6,
-                recalibrate: 1,
+                // Alternates feedback/no-feedback internally (same mechanism as
+                // baseline, via computeHasFeedback below) -- FB, noFB, FB, noFB, ...
+                // for 12 trials, plus one final FB trial (falls out naturally as
+                // trial 13 continuing the alternation), replacing the old
+                // holdFB(6) + holdNoFB(6) + recalibrate(1) blocked structure.
+                hold: 13,
                 washout: 4,
             },
 
@@ -396,9 +399,9 @@
             },
 
             feedback: {
-                // Applies only to baseline trials (alternating pattern). Every other
-                // phase has a fixed feedback state: rampUp/holdFB/recalibrate always
-                // have feedback, holdNoFB/washout never do.
+                // Applies to baseline AND hold (both alternate feedback/no-feedback
+                // internally, starting with feedback). rampUp always has feedback;
+                // washout never does.
                 // 0 = every trial has feedback (cursor always visible).
                 // 1 = no trial has feedback (cursor never visible).
                 // N >= 2 = every Nth trial (1-indexed within the phase) has no feedback.
@@ -421,10 +424,8 @@
                 },
                 trialComplete: "Good job! Click OK to continue the game.",
                 baselineToRamp: "Great job! The controls may start to feel different. Try to adapt as you go. Click OK to continue.",
-                rampToHoldFB: "Great job! Keep going! Click OK to continue.",
-                holdFBToHoldNoFB: "Great job! Your cursor will disappear for the next few trials. Keep aiming the same way you have been. Click OK to continue.",
-                holdNoFBToRecalibrate: "Great job! Your cursor is back for a couple more trials. Click OK to continue.",
-                recalibrateToWashout: "Great job! Now your controls are back to normal. Your cursor will disappear during these next trials, try your best to aim directly toward the fly. Click OK to continue.",
+                rampToHold: "Great job! Keep going! Click OK to continue.",
+                holdToWashout: "Great job! Now your controls are back to normal. Your cursor will disappear during these next trials, try your best to aim directly toward the fly. Click OK to continue.",
                 uploading: "Please wait for data to be processed and uploaded..."
             },
 
@@ -441,9 +442,7 @@
                 documentPrefixes: {
                     baseline: "baseline",
                     rampUp: "ramp",
-                    holdFB: "hold_fb",
-                    holdNoFB: "hold_nofb",
-                    recalibrate: "recalibrate",
+                    hold: "hold",
                     washout: "washout"
                 },
                 trialsPerUpload: 4
@@ -470,7 +469,11 @@
                 amplitudeSets: { x: [2.22, 2.03, 1.85], y: [2.31, 2.13, 1.94] }
             },
             high: {
-                frequencies: { x: [30 / 30, 28 / 30, 26 / 30], y: [29 / 30, 27 / 30, 25 / 30] },
+                // Shifted ~50% higher than the original k=25-30 block (per user
+                // feedback that the initial range felt too slow) -- same
+                // alternating even/odd-k-to-axis structure, same amplitudes, so
+                // peak velocity (amplitude x frequency) rises ~50% along with it.
+                frequencies: { x: [44 / 30, 42 / 30, 40 / 30], y: [43 / 30, 41 / 30, 39 / 30] },
                 amplitudeSets: { x: [0.85, 0.96, 1.07], y: [0.73, 0.76, 0.78] }
             }
         };
@@ -734,13 +737,21 @@
         // FLY MOVEMENT
         // ============================================================
         function generatePhi() {
-            const phi = [];
-            for (let i = 0; i < 3; i++) {
-                // Genuinely per-participant random (Math.random(), no shared seed) so
-                // no two participants see the identical trajectory on the same trial.
-                phi.push(Math.random() * 2 * Math.PI - Math.PI);
-            }
-            return phi;
+            // Independent per-axis phases (not shared between x[i]/y[i]) -- x and y
+            // components already oscillate at different frequencies, so a shared
+            // phase only ever aligned them at t=0 anyway; drawing them independently
+            // removes that one remaining coincidental alignment for more consistently
+            // unpredictable-looking motion.
+            const makeAxisPhi = () => {
+                const arr = [];
+                for (let i = 0; i < 3; i++) {
+                    // Genuinely per-participant random (Math.random(), no shared seed) so
+                    // no two participants see the identical trajectory on the same trial.
+                    arr.push(Math.random() * 2 * Math.PI - Math.PI);
+                }
+                return arr;
+            };
+            return { x: makeAxisPhi(), y: makeAxisPhi() };
         }
 
         function updateFlyPosition(t, phi) {
@@ -749,8 +760,8 @@
             const { frequencies } = FLY_PARAMS;
             let dx = 0, dy = 0;
             for (let i = 0; i < 3; i++) {
-                dx += a_x[i] * Math.cos(2 * Math.PI * t * frequencies.x[i] + phi[i]);
-                dy += a_y[i] * Math.cos(2 * Math.PI * t * frequencies.y[i] + phi[i]);
+                dx += a_x[i] * Math.cos(2 * Math.PI * t * frequencies.x[i] + phi.x[i]);
+                dy += a_y[i] * Math.cos(2 * Math.PI * t * frequencies.y[i] + phi.y[i]);
             }
             state.fly.x = dx + width / 2;
             state.fly.y = dy + height / 2;
@@ -1069,9 +1080,7 @@
             switch (phase) {
                 case "baseline": state.currentRotationDegrees = 0; break;
                 case "rampUp": state.currentRotationDegrees = (trialIndexInPhase + 1) * degreesPerTrial; break;
-                case "holdFB": state.currentRotationDegrees = maxDegrees; break;
-                case "holdNoFB": state.currentRotationDegrees = maxDegrees; break;
-                case "recalibrate": state.currentRotationDegrees = maxDegrees; break;
+                case "hold": state.currentRotationDegrees = maxDegrees; break;
                 case "washout": state.currentRotationDegrees = 0; break;
                 default: state.currentRotationDegrees = 0;
             }
@@ -1092,19 +1101,17 @@
             trialQueue = [];
             const phases = [
                 { name: "baseline", count: CONFIG.trials.baseline, next: "rampUp", msg: CONFIG.messages.baselineToRamp },
-                { name: "rampUp", count: CONFIG.trials.rampUp, next: "holdFB", msg: CONFIG.messages.rampToHoldFB },
-                { name: "holdFB", count: CONFIG.trials.holdFB, next: "holdNoFB", msg: CONFIG.messages.holdFBToHoldNoFB },
-                { name: "holdNoFB", count: CONFIG.trials.holdNoFB, next: "recalibrate", msg: CONFIG.messages.holdNoFBToRecalibrate },
-                { name: "recalibrate", count: CONFIG.trials.recalibrate, next: "washout", msg: CONFIG.messages.recalibrateToWashout },
+                { name: "rampUp", count: CONFIG.trials.rampUp, next: "hold", msg: CONFIG.messages.rampToHold },
+                { name: "hold", count: CONFIG.trials.hold, next: "washout", msg: CONFIG.messages.holdToWashout },
                 { name: "washout", count: CONFIG.trials.washout, next: "done", msg: "" }
             ];
             let globalIndex = 0;
             phases.forEach(p => {
                 for (let i = 0; i < p.count; i++) {
                     let hasFeedback = true;
-                    if (p.name === "baseline") {
+                    if (p.name === "baseline" || p.name === "hold") {
                         hasFeedback = computeHasFeedback(i);
-                    } else if (p.name === "holdNoFB" || p.name === "washout") {
+                    } else if (p.name === "washout") {
                         hasFeedback = false;
                     }
                     trialQueue.push({
@@ -1181,11 +1188,11 @@
 
             const nextTrial = trialQueue[state.trialIndex]; // Note: saveTrialData increments state.trialIndex
 
-            if (trial.phase === "recalibrate" && nextTrial && nextTrial.phase === "washout") {
+            if (trial.phase === "hold" && nextTrial && nextTrial.phase === "washout") {
                 const phaseStartIndex = trialQueue.findIndex(t => t.phase === trial.phase);
                 await uploadPhaseData(trial.phase, phaseStartIndex, state.trialIndex);
                 await showPreWashoutDialModal();
-                await showModal(lowMovementPrefix + CONFIG.messages.recalibrateToWashout);
+                await showModal(lowMovementPrefix + CONFIG.messages.holdToWashout);
                 await showDialModal();
             } else if (trial.isLastOfPhase) {
                 const phaseStartIndex = trialQueue.findIndex(t => t.phase === trial.phase);
@@ -1519,11 +1526,7 @@
                             <input class="admin-input" type="number" id="adminRamp" placeholder="Ramp" value="${CONFIG.trials.rampUp}">
                         </div>
                         <div class="admin-input-row" style="margin-top: 6px;">
-                            <input class="admin-input" type="number" id="adminHoldFB" placeholder="Hold FB" value="${CONFIG.trials.holdFB}">
-                            <input class="admin-input" type="number" id="adminHoldNoFB" placeholder="Hold NoFB" value="${CONFIG.trials.holdNoFB}">
-                        </div>
-                        <div class="admin-input-row" style="margin-top: 6px;">
-                            <input class="admin-input" type="number" id="adminRecalibrate" placeholder="Recalibrate" value="${CONFIG.trials.recalibrate}">
+                            <input class="admin-input" type="number" id="adminHold" placeholder="Hold (alternating)" value="${CONFIG.trials.hold}">
                             <input class="admin-input" type="number" id="adminWashout" placeholder="Washout" value="${CONFIG.trials.washout}">
                         </div>
                         <div class="admin-input-row" style="margin-top: 6px; grid-template-columns: 1fr;">
@@ -1557,17 +1560,13 @@
             document.getElementById('adminApplyCounts').addEventListener('click', () => {
                 const base = parseInt(document.getElementById('adminBase').value) || 0;
                 const ramp = parseInt(document.getElementById('adminRamp').value) || 0;
-                const holdFB = parseInt(document.getElementById('adminHoldFB').value) || 0;
-                const holdNoFB = parseInt(document.getElementById('adminHoldNoFB').value) || 0;
-                const recalibrate = parseInt(document.getElementById('adminRecalibrate').value) || 0;
+                const hold = parseInt(document.getElementById('adminHold').value) || 0;
                 const washout = parseInt(document.getElementById('adminWashout').value) || 0;
                 const noFeedbackN = parseInt(document.getElementById('adminNoFeedbackN').value);
 
                 CONFIG.trials.baseline = base;
                 CONFIG.trials.rampUp = ramp;
-                CONFIG.trials.holdFB = holdFB;
-                CONFIG.trials.holdNoFB = holdNoFB;
-                CONFIG.trials.recalibrate = recalibrate;
+                CONFIG.trials.hold = hold;
                 CONFIG.trials.washout = washout;
                 CONFIG.feedback.noFeedbackEveryN = isNaN(noFeedbackN) ? CONFIG.feedback.noFeedbackEveryN : noFeedbackN;
 
@@ -1612,14 +1611,15 @@
                 return acc;
             }, []);
 
-            const phaseCounts = [
-                trials.baseline,
-                trials.baseline + trials.rampUp,
-                trials.baseline + trials.rampUp + trials.holdFB,
-                trials.baseline + trials.rampUp + trials.holdFB + trials.holdNoFB,
-                trials.baseline + trials.rampUp + trials.holdFB + trials.holdNoFB + trials.recalibrate,
-                trials.baseline + trials.rampUp + trials.holdFB + trials.holdNoFB + trials.recalibrate + trials.washout
-            ];
+            // Cumulative trial-count boundary after each phase, in declaration
+            // order -- generic to whatever phases CONFIG.trials defines (not
+            // hardcoded to this game's specific 6), so done.html can render
+            // any game's phase structure without knowing its names in advance.
+            let cumTrials = 0;
+            const phaseCounts = Object.keys(trials).map(name => {
+                cumTrials += trials[name];
+                return cumTrials;
+            });
             const highlights = phaseCounts.map(count => {
                 const idx = Math.max(0, Math.min(cumulativeLengths.length - 1, count - 1));
                 return cumulativeLengths[idx] || 0;
@@ -1635,7 +1635,10 @@
             localStorage.setItem('percentages', JSON.stringify(percentages));
             localStorage.setItem('distances', JSON.stringify(flatDistances));
             localStorage.setItem('game_config', JSON.stringify({
-                trials: CONFIG.trials, durations: CONFIG.durations, perturbation: CONFIG.perturbation, frequencyMode: CONFIG.frequencyMode
+                // phaseOrder makes the structure explicit for done.html (and any
+                // other consumer) rather than relying on JS object key order.
+                trials: CONFIG.trials, phaseOrder: Object.keys(CONFIG.trials),
+                durations: CONFIG.durations, perturbation: CONFIG.perturbation, frequencyMode: CONFIG.frequencyMode
             }));
             localStorage.setItem('highlights', JSON.stringify(highlights));
             if (state.canNavigate) window.location.href = CONFIG.navigation.completionPage;
