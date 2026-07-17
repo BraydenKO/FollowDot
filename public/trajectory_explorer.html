@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trajectory Explorer</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 24px;
+            min-height: 100vh;
+            background-color: #f5f5f5;
+        }
+
+        .page {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+            align-items: start;
+        }
+
+        .container {
+            background-color: white;
+            padding: 26px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin: 0 0 6px 0;
+            font-size: 1.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin: 0 0 20px 0;
+            font-size: 0.85em;
+        }
+
+        h2 {
+            font-size: 1.0em;
+            color: #333;
+            margin: 0 0 10px 0;
+            border-bottom: 1px solid #e5e5e5;
+            padding-bottom: 6px;
+        }
+
+        section.panel {
+            margin-bottom: 20px;
+        }
+
+        table.freq-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82em;
+        }
+
+        table.freq-table th {
+            text-align: left;
+            color: #888;
+            font-weight: 500;
+            font-size: 0.85em;
+            padding: 4px 6px;
+        }
+
+        table.freq-table td {
+            padding: 3px 5px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        table.freq-table input[type="number"] {
+            width: 64px;
+            padding: 3px 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.95em;
+        }
+
+        table.freq-table tr.disabled td {
+            color: #bbb;
+        }
+
+        table.freq-table tr.disabled input {
+            color: #bbb;
+            background: #f7f7f7;
+        }
+
+        .preset-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        button.small-btn {
+            background: rgba(37, 99, 235, 0.1);
+            color: #2563eb;
+            border: 1px solid rgba(37, 99, 235, 0.3);
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-size: 0.82em;
+            cursor: pointer;
+        }
+
+        button.small-btn:hover {
+            background: rgba(37, 99, 235, 0.18);
+        }
+
+        .hint {
+            color: #888;
+            font-size: 0.78em;
+            margin: 8px 0 0 0;
+            line-height: 1.4;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 13px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            color: white;
+            background: #16a34a;
+            margin-top: 6px;
+        }
+
+        .action-btn:hover {
+            background: #15803d;
+        }
+
+        /* ---- results panel ---- */
+        #canvasWrap {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 18px;
+        }
+
+        #trajCanvas {
+            background: #fbfbfa;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+
+        .legend-row {
+            display: flex;
+            gap: 22px;
+            justify-content: center;
+            flex-wrap: wrap;
+            font-size: 0.8em;
+            color: #444;
+            margin-bottom: 18px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .swatch {
+            width: 22px;
+            height: 0;
+            border-top: 3px solid;
+        }
+
+        .swatch.dashed {
+            border-top-style: dashed;
+        }
+
+        .dot-swatch {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        table.stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88em;
+        }
+
+        table.stats-table th,
+        table.stats-table td {
+            padding: 7px 10px;
+            text-align: right;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        table.stats-table th:first-child,
+        table.stats-table td:first-child {
+            text-align: left;
+            color: #555;
+        }
+
+        table.stats-table thead th {
+            color: #888;
+            font-weight: 500;
+            font-size: 0.92em;
+        }
+
+        table.stats-table .empirical-col {
+            color: #2563eb;
+            font-weight: 600;
+        }
+
+        table.stats-table .theory-col {
+            color: #c2410c;
+            font-weight: 600;
+        }
+
+        .placeholder {
+            text-align: center;
+            color: #999;
+            padding: 60px 0;
+            font-size: 0.95em;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <!-- ============================================================
+             SETTINGS PANEL
+             ============================================================ -->
+        <div class="container">
+            <h1>Trajectory Explorer</h1>
+            <p class="subtitle">Pick a frequency/amplitude set, generate one full 30s trajectory at once, and compare
+                it against the theoretical mean/variance.</p>
+
+            <section class="panel">
+                <h2>Target frequencies &amp; amplitudes</h2>
+                <strong style="font-size: 0.85em;">Horizontal (x)</strong>
+                <table class="freq-table" id="xFreqTable">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Freq (Hz)</th>
+                            <th>Amplitude (px)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <strong style="font-size: 0.85em; display: block; margin-top: 10px;">Vertical (y)</strong>
+                <table class="freq-table" id="yFreqTable">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Freq (Hz)</th>
+                            <th>Amplitude (px)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div class="preset-row">
+                    <button class="small-btn" id="setOriginalBtn" type="button">Set Original Range</button>
+                    <button class="small-btn" id="setLowRangeBtn" type="button">Set Low Range</button>
+                    <button class="small-btn" id="setHighRangeBtn" type="button">Set High Range</button>
+                </div>
+                <p class="hint">"Original" loads the pre-redesign 7-freq/axis set in fixed order (no reshuffle, matching
+                    that version's actual behavior). Low/High load the current game.html's 3-freq/axis pools with a
+                    fresh random amplitude-to-frequency shuffle, same as a real trial. All values are editable —
+                    type in anything you want to test. Unchecking a row zeroes that axis' contribution.</p>
+            </section>
+
+            <button class="action-btn" id="generateBtn" type="button">Generate Trajectory</button>
+            <p class="hint">Computes the full 30s / 600-sample path at once (fs=20Hz, matching game.html) — this is
+                not an animation, the whole trial is drawn instantly. Phases are freshly randomized every click, same
+                as a real trial (no shared seed).</p>
+        </div>
+
+        <!-- ============================================================
+             RESULTS PANEL
+             ============================================================ -->
+        <div class="container">
+            <h2 style="border: none; margin-bottom: 4px;">Full Trajectory (30s, reference screen 1440×900)</h2>
+            <div id="canvasWrap">
+                <canvas id="trajCanvas" width="960" height="600"></canvas>
+            </div>
+            <div class="legend-row">
+                <div class="legend-item"><span class="swatch" style="border-color: #cde2fb;"></span>Path
+                    (t=0 → light, t=30s → dark)</div>
+                <div class="legend-item"><span class="dot-swatch" style="background:#2563eb;"></span>Empirical mean
+                </div>
+                <div class="legend-item"><span class="swatch" style="border-color:#2563eb;"></span>Empirical ellipse
+                    (1 SD)</div>
+                <div class="legend-item"><span class="dot-swatch" style="background:#c2410c;"></span>Theoretical mean
+                    (screen center)</div>
+                <div class="legend-item"><span class="swatch dashed" style="border-color:#c2410c;"></span>Theoretical
+                    ellipse (1 SD)</div>
+            </div>
+
+            <div id="statsWrap">
+                <div class="placeholder" id="statsPlaceholder">Click "Generate Trajectory" to see the path and stats.
+                </div>
+                <table class="stats-table hidden" id="statsTable">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th class="empirical-col">Empirical (this run)</th>
+                            <th class="theory-col">Theoretical (all runs)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Mean offset from center (x, y)</td>
+                            <td class="empirical-col" id="statMeanEmp">–</td>
+                            <td class="theory-col" id="statMeanTheory">(0.0, 0.0) px — exact, any settings</td>
+                        </tr>
+                        <tr>
+                            <td>Var x / Var y (px²)</td>
+                            <td class="empirical-col" id="statVarEmp">–</td>
+                            <td class="theory-col" id="statVarTheory">–</td>
+                        </tr>
+                        <tr>
+                            <td>SD x / SD y (px)</td>
+                            <td class="empirical-col" id="statSdEmp">–</td>
+                            <td class="theory-col" id="statSdTheory">–</td>
+                        </tr>
+                        <tr>
+                            <td>Cov(x, y) (px²)</td>
+                            <td class="empirical-col" id="statCovEmp">–</td>
+                            <td class="theory-col">0.0 — exact (x, y phases are independent)</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p class="hint" id="statsFootnote"></p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // ============================================================
+        // DEFAULTS — mirrors FLY_PARAMS in the pre-redesign game.html
+        // (public/old_game_files/game.html), full-size (unshrunk) amplitudes.
+        // ============================================================
+        const DEFAULTS = {
+            x: {
+                freqs: [0.075, 0.175, 0.325, 0.475, 0.725, 0.925, 1.075],
+                amplitudeMultipliers: [2.31, 2.31, 2.31, 1.76, 1.30, 0.97, 0.73],
+                scaleBase: 61
+            },
+            y: {
+                freqs: [0.05, 0.125, 0.275, 0.425, 0.575, 0.775, 1.025],
+                amplitudeMultipliers: [2.31, 2.31, 2.31, 1.58, 1.03, 0.81, 0.70],
+                scaleBase: 40
+            }
+        };
+        // Low/high frequency-mode pools, mirrored from FREQUENCY_MODES in the
+        // current game.html. Amplitudes are raw (pre-scale) multipliers, same
+        // as DEFAULTS -- converted to pixel amplitudes via each axis's scaleBase.
+        // Tuned so each mode's typical (Monte Carlo) spatial range matches the
+        // "Original" 7-freq/axis preset's range exactly (100%) -- this is the tool
+        // that derived these values in the first place; see project discussion.
+        const RANGE_PRESETS = {
+            low: {
+                x: { freqs: [2 / 30, 4 / 30, 6 / 30], amplitudeMultipliers: [4.085, 3.736, 3.405] },
+                y: { freqs: [1 / 30, 3 / 30, 5 / 30], amplitudeMultipliers: [3.375, 3.110, 2.833] }
+            },
+            high: {
+                x: { freqs: [40 / 30, 42 / 30, 44 / 30], amplitudeMultipliers: [2.684, 3.031, 3.379] },
+                y: { freqs: [39 / 30, 41 / 30, 43 / 30], amplitudeMultipliers: [2.732, 2.845, 2.917] }
+            }
+        };
+
+        function shuffle(arr) {
+            const a = arr.slice();
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        }
+
+        const N = 7; // table always has 7 rows/axis; Low/High only activate 3
+        const REF_WIDTH = 1440, REF_HEIGHT = 900; // reference (full-size, unshrunk) screen
+        const TRIAL_SECONDS = 30, FS = 20; // matches game.html CONFIG.durations/sampling
+        const N_SAMPLES = TRIAL_SECONDS * FS;
+
+        const defaultAmplitudes = {
+            x: DEFAULTS.x.amplitudeMultipliers.map(m => m * DEFAULTS.x.scaleBase),
+            y: DEFAULTS.y.amplitudeMultipliers.map(m => m * DEFAULTS.y.scaleBase)
+        };
+
+        // ============================================================
+        // BUILD SETTINGS UI
+        // ============================================================
+        function buildFreqTable(axis) {
+            const tbody = document.querySelector(`#${axis}FreqTable tbody`);
+            const freqs = DEFAULTS[axis].freqs;
+            const amps = defaultAmplitudes[axis];
+            for (let i = 0; i < N; i++) {
+                const tr = document.createElement('tr');
+                tr.id = `${axis}Row${i}`;
+                tr.innerHTML = `
+                    <td><input type="checkbox" id="${axis}Chk${i}" checked></td>
+                    <td><input type="number" id="${axis}Freq${i}" value="${freqs[i]}" step="0.001"></td>
+                    <td><input type="number" id="${axis}Amp${i}" value="${amps[i].toFixed(1)}" step="1"></td>
+                `;
+                tbody.appendChild(tr);
+                const chk = tr.querySelector(`#${axis}Chk${i}`);
+                chk.addEventListener('change', () => tr.classList.toggle('disabled', !chk.checked));
+            }
+        }
+        buildFreqTable('x');
+        buildFreqTable('y');
+
+        // Populates the table for 'original' (all 7 rows, fixed order, no
+        // reshuffle -- matches the pre-redesign game.html, which never
+        // reshuffled amplitude<->frequency pairing) or 'low'/'high' (first 3
+        // rows only, with a fresh random amplitude<->frequency shuffle per
+        // axis, matching generateTrialAmplitudes() in the current game.html).
+        function applyRangePreset(mode) {
+            for (const axis of ['x', 'y']) {
+                let freqs, amps;
+                if (mode === 'original') {
+                    freqs = DEFAULTS[axis].freqs;
+                    amps = defaultAmplitudes[axis].slice();
+                } else {
+                    const preset = RANGE_PRESETS[mode][axis];
+                    const scaleBase = DEFAULTS[axis].scaleBase;
+                    freqs = preset.freqs;
+                    amps = shuffle(preset.amplitudeMultipliers.map(m => m * scaleBase));
+                }
+                for (let i = 0; i < N; i++) {
+                    const chk = document.getElementById(`${axis}Chk${i}`);
+                    const row = document.getElementById(`${axis}Row${i}`);
+                    const active = i < freqs.length;
+                    chk.checked = active;
+                    row.classList.toggle('disabled', !active);
+                    if (active) {
+                        document.getElementById(`${axis}Freq${i}`).value = freqs[i];
+                        document.getElementById(`${axis}Amp${i}`).value = amps[i].toFixed(1);
+                    }
+                }
+            }
+        }
+        document.getElementById('setOriginalBtn').addEventListener('click', () => applyRangePreset('original'));
+        document.getElementById('setLowRangeBtn').addEventListener('click', () => applyRangePreset('low'));
+        document.getElementById('setHighRangeBtn').addEventListener('click', () => applyRangePreset('high'));
+        applyRangePreset('original'); // initial state
+
+        // ============================================================
+        // READ SETTINGS
+        // ============================================================
+        function readAxisSettings(axis) {
+            const freqs = [], checked = [], amps = [];
+            for (let i = 0; i < N; i++) {
+                freqs.push(parseFloat(document.getElementById(`${axis}Freq${i}`).value) || 0);
+                checked.push(document.getElementById(`${axis}Chk${i}`).checked);
+                amps.push(parseFloat(document.getElementById(`${axis}Amp${i}`).value) || 0);
+            }
+            return { freqs, checked, amps };
+        }
+
+        function generatePhi() {
+            // Independent per-axis random phases, uniform in [-pi, pi) -- matches
+            // generatePhi() in game.html (no shared seed, decoupled x/y phases).
+            const randomAxis = () => {
+                const arr = [];
+                for (let i = 0; i < N; i++) arr.push(Math.random() * 2 * Math.PI - Math.PI);
+                return arr;
+            };
+            return { x: randomAxis(), y: randomAxis() };
+        }
+
+        function computeTargetOffset(t, phi, xSettings, ySettings) {
+            let dx = 0, dy = 0;
+            for (let i = 0; i < N; i++) {
+                const xAmp = xSettings.checked[i] ? xSettings.amps[i] : 0;
+                const yAmp = ySettings.checked[i] ? ySettings.amps[i] : 0;
+                dx += xAmp * Math.cos(2 * Math.PI * t * xSettings.freqs[i] + phi.x[i]);
+                dy += yAmp * Math.cos(2 * Math.PI * t * ySettings.freqs[i] + phi.y[i]);
+            }
+            return { dx, dy };
+        }
+
+        // ============================================================
+        // STATS: empirical (from the generated run) + theoretical (closed-form,
+        // independent of phase -- true for every possible run, not just this one)
+        // ============================================================
+        function computeEmpiricalStats(dxArr, dyArr) {
+            const n = dxArr.length;
+            const meanX = dxArr.reduce((s, v) => s + v, 0) / n;
+            const meanY = dyArr.reduce((s, v) => s + v, 0) / n;
+            let varX = 0, varY = 0, covXY = 0;
+            for (let i = 0; i < n; i++) {
+                const ex = dxArr[i] - meanX, ey = dyArr[i] - meanY;
+                varX += ex * ex; varY += ey * ey; covXY += ex * ey;
+            }
+            varX /= n; varY /= n; covXY /= n;
+            return { meanX, meanY, varX, varY, covXY };
+        }
+
+        function computeTheoreticalVariance(settings) {
+            // Var = 1/2 * sum(amplitude_i^2) over active rows -- each sub-wave is an
+            // independent zero-mean random-phase cosine, so variances add and the
+            // mean is exactly 0 (offset from center), regardless of amplitude/frequency.
+            let v = 0;
+            for (let i = 0; i < N; i++) {
+                if (settings.checked[i]) v += settings.amps[i] * settings.amps[i];
+            }
+            return v / 2;
+        }
+
+        // 2x2 symmetric covariance -> ellipse (semi-axes + rotation), closed-form
+        // eigendecomposition (no need for a linear-algebra library at this size).
+        function ellipseParamsFromCov(varX, varY, covXY) {
+            const trace = varX + varY;
+            const det = varX * varY - covXY * covXY;
+            const term = Math.sqrt(Math.max(0, (trace / 2) ** 2 - det));
+            const eig1 = trace / 2 + term, eig2 = trace / 2 - term;
+            let angle;
+            if (covXY === 0) {
+                angle = varX >= varY ? 0 : Math.PI / 2;
+            } else {
+                angle = 0.5 * Math.atan2(2 * covXY, varX - varY);
+            }
+            return { semiMajor: Math.sqrt(Math.max(0, eig1)), semiMinor: Math.sqrt(Math.max(0, eig2)), angle };
+        }
+
+        // ============================================================
+        // RENDERING
+        // ============================================================
+        const canvas = document.getElementById('trajCanvas');
+        const ctx = canvas.getContext('2d');
+        const SCALE = canvas.width / REF_WIDTH; // uniform (canvas keeps the 1440:900 aspect ratio) -- no shear
+
+        function lerpColor(hexA, hexB, t) {
+            const a = [1, 3, 5].map(i => parseInt(hexA.slice(i, i + 2), 16));
+            const b = [1, 3, 5].map(i => parseInt(hexB.slice(i, i + 2), 16));
+            const c = a.map((v, i) => Math.round(v + (b[i] - v) * t));
+            return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+        }
+
+        function toCanvas(dx, dy) {
+            return [canvas.width / 2 + dx * SCALE, canvas.height / 2 + dy * SCALE];
+        }
+
+        function drawEllipse(cx, cy, semiMajorPx, semiMinorPx, angle, color, dashed) {
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            if (dashed) ctx.setLineDash([7, 5]);
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, Math.max(0.5, semiMajorPx * SCALE), Math.max(0.5, semiMinorPx * SCALE), angle, 0, 2 * Math.PI);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function render(dxArr, dyArr, empStats, theoryVarX, theoryVarY) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Center crosshair (reference gridlines)
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0); ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.moveTo(0, canvas.height / 2); ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+
+            // Path, color-graded light->dark blue over time (sequential ramp, references/palette.md)
+            const n = dxArr.length;
+            for (let i = 1; i < n; i++) {
+                const [x0, y0] = toCanvas(dxArr[i - 1], dyArr[i - 1]);
+                const [x1, y1] = toCanvas(dxArr[i], dyArr[i]);
+                ctx.beginPath();
+                ctx.moveTo(x0, y0);
+                ctx.lineTo(x1, y1);
+                ctx.strokeStyle = lerpColor('#cde2fb', '#0d366b', i / (n - 1));
+                ctx.lineWidth = 1.6;
+                ctx.stroke();
+            }
+
+            // Theoretical ellipse + mean (axis-aligned, centered exactly at screen center)
+            const [ctrX, ctrY] = toCanvas(0, 0);
+            drawEllipse(ctrX, ctrY, Math.sqrt(theoryVarX), Math.sqrt(theoryVarY), 0, '#c2410c', true);
+            ctx.fillStyle = '#c2410c';
+            ctx.beginPath();
+            ctx.arc(ctrX, ctrY, 5, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Empirical ellipse + mean (centered at the sample mean, generally tilted)
+            const { semiMajor, semiMinor, angle } = ellipseParamsFromCov(empStats.varX, empStats.varY, empStats.covXY);
+            const [meanCx, meanCy] = toCanvas(empStats.meanX, empStats.meanY);
+            drawEllipse(meanCx, meanCy, semiMajor, semiMinor, angle, '#2563eb', false);
+            ctx.fillStyle = '#2563eb';
+            ctx.beginPath();
+            ctx.arc(meanCx, meanCy, 5, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.strokeStyle = 'white'; ctx.lineWidth = 1.5; ctx.stroke();
+        }
+
+        function updateStatsPanel(empStats, theoryVarX, theoryVarY) {
+            document.getElementById('statsPlaceholder').classList.add('hidden');
+            document.getElementById('statsTable').classList.remove('hidden');
+
+            document.getElementById('statMeanEmp').textContent =
+                `(${empStats.meanX.toFixed(1)}, ${empStats.meanY.toFixed(1)}) px`;
+            document.getElementById('statVarEmp').textContent =
+                `${empStats.varX.toFixed(0)} / ${empStats.varY.toFixed(0)}`;
+            document.getElementById('statVarTheory').textContent =
+                `${theoryVarX.toFixed(0)} / ${theoryVarY.toFixed(0)}`;
+            document.getElementById('statSdEmp').textContent =
+                `${Math.sqrt(empStats.varX).toFixed(1)} / ${Math.sqrt(empStats.varY).toFixed(1)}`;
+            document.getElementById('statSdTheory').textContent =
+                `${Math.sqrt(theoryVarX).toFixed(1)} / ${Math.sqrt(theoryVarY).toFixed(1)}`;
+            document.getElementById('statCovEmp').textContent = empStats.covXY.toFixed(0);
+
+            document.getElementById('statsFootnote').textContent =
+                'Theoretical values are exact for any phase draw (mean=0 offset from center, ' +
+                'Cov(x,y)=0) since each sub-wave is an independent zero-mean random-phase cosine ' +
+                'and x/y phases are drawn independently — they only depend on the amplitudes above, ' +
+                'not on this specific run’s randomized phases. Empirical values are this one 30s ' +
+                'sample and will vary run to run, converging toward the theoretical values as trial ' +
+                'length/number of runs grows.';
+        }
+
+        // ============================================================
+        // GENERATE
+        // ============================================================
+        function generateTrajectory() {
+            const xSettings = readAxisSettings('x');
+            const ySettings = readAxisSettings('y');
+            const phi = generatePhi();
+
+            const dxArr = new Array(N_SAMPLES);
+            const dyArr = new Array(N_SAMPLES);
+            for (let k = 0; k < N_SAMPLES; k++) {
+                const t = k / FS;
+                const { dx, dy } = computeTargetOffset(t, phi, xSettings, ySettings);
+                dxArr[k] = dx; dyArr[k] = dy;
+            }
+
+            const empStats = computeEmpiricalStats(dxArr, dyArr);
+            const theoryVarX = computeTheoreticalVariance(xSettings);
+            const theoryVarY = computeTheoreticalVariance(ySettings);
+
+            render(dxArr, dyArr, empStats, theoryVarX, theoryVarY);
+            updateStatsPanel(empStats, theoryVarX, theoryVarY);
+        }
+
+        document.getElementById('generateBtn').addEventListener('click', generateTrajectory);
+    </script>
+</body>
+
+</html>
