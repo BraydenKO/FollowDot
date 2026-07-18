@@ -559,97 +559,30 @@
     <!-- ============================================================
          JAVASCRIPT
          ============================================================ -->
+    <script src="studyConfig.js"></script>
     <script>
         // ============================================================
         // CONFIGURATION - Easy to modify study parameters
         // ============================================================
+        // All study-specific values come from studyConfig.js.
         const CONFIG = {
-            // ----------------------------------------------------------
-            // INPUT DEVICE FILTERING
-            // ----------------------------------------------------------
-            inputDevice: {
-                // Only allow these devices (others will be rejected)
-                allowedDevices: ['mouse']
-            },
-
-            // ----------------------------------------------------------
-            // HANDEDNESS FILTERING
-            // ----------------------------------------------------------
-            handedness: {
-                // Which handedness to recruit: 'right', 'left', or 'both'
-                // Change this single value to switch recruitment mode
-                recruitingFor: 'right',
-
-                // For LEFT-HANDED recruitment: 5 critical questions (subset)
-                criticalQuestionsLeft: [
-                    'trackpad', 'writing', 'drawing', 'throwing', 'knife'
-                ],
-
-                // For RIGHT-HANDED recruitment: ALL 16 questions (stricter)
-                criticalQuestionsRight: [
-                    'writing', 'drawing', 'throwing', 'scissors', 'toothbrush',
-                    'knife', 'spoon', 'broom', 'match', 'box', 'mouse', 'trackpad',
-                    'key', 'hammer', 'brush', 'cup'
-                ],
-
-                hand_to_use: 'right',
-
-                direction: 'CCW' // Direction of rotation in game
-            },
-
-            // ----------------------------------------------------------
-            // FIREBASE SETTINGS
-            // ----------------------------------------------------------
+            minimumAge: STUDY_CONFIG.eligibility.minimumAge,
+            inputDevice: { allowedDevices: STUDY_CONFIG.eligibility.allowedDevices },
+            handedness: STUDY_CONFIG.eligibility.handedness,
+            assignment: STUDY_CONFIG.assignment,
             firebase: {
-                experimentCollection: 'experiments_abrupt_noFB',
-                statisticsDocument: 'study_statistics',
-                enabled: true
+                experimentCollection: STUDY_CONFIG.study.collectionName,
+                statisticsDocument: STUDY_CONFIG.firebase.statisticsDocument,
+                enabled: STUDY_CONFIG.firebase.enabled
             },
-
-            // ----------------------------------------------------------
-            // NAVIGATION
-            // ----------------------------------------------------------
-            navigation: {
-                gamePage: 'game.html'
-            }
+            navigation: STUDY_CONFIG.navigation
         };
-
-        // ============================================================
-        // COLLECTION NAME CALCULATOR
-        // ============================================================
-        function getCollectionName() {
-            const recruit_hand = CONFIG.handedness.recruitingFor;
-            const use_hand = CONFIG.handedness.hand_to_use;
-            const direction = CONFIG.handedness.direction;
-            const collection_name = `${CONFIG.firebase.experimentCollection}_${recruit_hand}_${use_hand}_${direction}`;
-
-            CONFIG.firebase.experimentCollection = collection_name;
-            return collection_name;
-        }
-        getCollectionName();
 
 
         // ============================================================
         // EDINBURGH HANDEDNESS INVENTORY QUESTIONS
         // ============================================================
-        const HANDEDNESS_QUESTIONS = [
-            { id: 'writing', label: 'Writing' },
-            { id: 'drawing', label: 'Drawing' },
-            { id: 'throwing', label: 'Throwing' },
-            { id: 'scissors', label: 'Using scissors' },
-            { id: 'toothbrush', label: 'Using a toothbrush' },
-            { id: 'knife', label: 'Using a knife (without a fork)' },
-            { id: 'spoon', label: 'Using a spoon' },
-            { id: 'broom', label: 'Using a broom (upper hand)' },
-            { id: 'match', label: 'Striking a match' },
-            { id: 'box', label: 'Opening a box (holding the lid)' },
-            { id: 'mouse', label: 'Holding a computer mouse' },
-            { id: 'trackpad', label: 'Using a computer trackpad' },
-            { id: 'key', label: 'Using a key to unlock a door' },
-            { id: 'hammer', label: 'Holding a hammer' },
-            { id: 'brush', label: 'Holding a brush or comb' },
-            { id: 'cup', label: 'Holding a cup while drinking' }
-        ];
+        const HANDEDNESS_QUESTIONS = CONFIG.handedness.questions;
 
         // ============================================================
         // STATE
@@ -752,8 +685,8 @@
                 return false;
             }
 
-            if (parseInt(age) < 18) {
-                showError(elements.demographicsError, 'You must be 18 or older to participate.');
+            if (parseInt(age) < CONFIG.minimumAge) {
+                showError(elements.demographicsError, `You must be ${CONFIG.minimumAge} or older to participate.`);
                 return false;
             }
 
@@ -948,7 +881,7 @@
             elements.btnStartGame.addEventListener('click', () => {
                 if (validateConsent()) {
                     const handSpan = document.getElementById('instruction-hand');
-                    handSpan.textContent = CONFIG.handedness.hand_to_use;
+                    handSpan.textContent = CONFIG.assignment.handToUse;
                     showStep(elements.stepInstructions);
                 }
             });
@@ -956,7 +889,7 @@
             // Instructions -> Game
             elements.btnBegin.addEventListener('click', () => {
                 localStorage.setItem('prolificId', state.demographics.prolificId);
-                localStorage.setItem('hand_to_use', CONFIG.handedness.hand_to_use);
+                localStorage.setItem('hand_to_use', CONFIG.assignment.handToUse);
                 localStorage.setItem('collection_name', CONFIG.firebase.experimentCollection)
                 sessionStorage.setItem('gameStarted', 'true');
                 localStorage.setItem('fullscreenIntent', 'true');
@@ -987,9 +920,9 @@
                     handednessResponses: state.handedness,
                     eligibility: state.eligibility,
                     experimentCondition: {
-                        assignedHand: CONFIG.handedness.hand_to_use, // 'RIGHT' or 'LEFT'
+                        assignedHand: CONFIG.assignment.handToUse,
                         recruitmentTarget: CONFIG.handedness.recruitingFor, // 'right', 'left', or 'both'
-                        rotation_direction: CONFIG.handedness.direction // 'CW' or 'CCW'
+                        rotationDegreesPerTrial: STUDY_CONFIG.game.perturbation.degreesPerTrial
                     },
                     createdAt: Timestamp.fromDate(new Date())
                 }, { merge: true });
@@ -1087,6 +1020,7 @@
         // INITIALIZATION
         // ============================================================
         function initialize() {
+            elements.age.min = CONFIG.minimumAge;
             buildHandednessForm();
             setupEventListeners();
         }

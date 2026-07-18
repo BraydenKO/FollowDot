@@ -601,24 +601,19 @@
     <!-- ============================================================
          JAVASCRIPT - UI Functions (regular script, loads synchronously)
          ============================================================ -->
+    <script src="studyConfig.js"></script>
     <script>
         // ============================================================
         // CONFIGURATION
         // ============================================================
         const CONFIG = {
-            upload: {
-                enabled: true
-            },
+            upload: STUDY_CONFIG.upload,
             firebase: {
-                experimentCollection: localStorage.getItem('collection_name'),
-                surveyDocument: "survey_responses"
+                experimentCollection: STUDY_CONFIG.study.collectionName,
+                surveyDocument: STUDY_CONFIG.firebase.surveyDocument
             },
-            survey: {
-                maxWords: 300
-            },
-            charts: {
-                samplingInterval: 50  // ms between data points
-            }
+            survey: STUDY_CONFIG.survey,
+            charts: STUDY_CONFIG.charts
         };
 
         // ============================================================
@@ -782,7 +777,7 @@
                 const { experimentCollection, surveyDocument } = CONFIG.firebase;
                 const oderId = `${prolificId}_${auth.currentUser.uid}`;
                 
-                // Reference: experiments_v2 / oderId / survey / survey_responses
+                // Reference: configured study collection / participant / survey / response
                 const surveyCollectionRef = collection(db, experimentCollection, oderId, 'survey');
                 const surveyDocRef = doc(surveyCollectionRef, surveyDocument);
                 
