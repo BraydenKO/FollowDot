@@ -431,6 +431,7 @@
             phis: [],
             trialAmplitudes: [],
             currentAmplitudes: null,
+            currentTrajectoryBankIndex: null,
             animationFrame: null,
             recordingInterval: null,
             currentMouseHandler: null,
@@ -451,28 +452,52 @@
         // ============================================================
         // COMPUTED VALUES
         // ============================================================
-        function shuffleArray(arr) {
+        function shuffleArray(arr, random = Math.random) {
             const a = arr.slice();
             for (let i = a.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
+                const j = Math.floor(random() * (i + 1));
                 [a[i], a[j]] = [a[j], a[i]];
             }
             return a;
         }
 
-        // Freshly reshuffles which amplitude pairs with which frequency, per axis,
-        // per trial, per participant (Math.random() — no shared seed). Small-screen
+        // Stable string hash + small deterministic PRNG. Together these let us
+        // recreate both the common trajectory bank and any participant's order
+        // without storing browser-specific Math.random() state.
+        function hashStringToUint32(value) {
+            let hash = 2166136261;
+            for (let i = 0; i < value.length; i++) {
+                hash ^= value.charCodeAt(i);
+                hash = Math.imul(hash, 16777619);
+            }
+            return hash >>> 0;
+        }
+
+        function mulberry32(seed) {
+            let stateValue = seed >>> 0;
+            return function () {
+                stateValue = (stateValue + 0x6D2B79F5) >>> 0;
+                let z = stateValue;
+                z = Math.imul(z ^ (z >>> 15), z | 1);
+                z ^= z + Math.imul(z ^ (z >>> 7), z | 61);
+                return ((z ^ (z >>> 14)) >>> 0) / 4294967296;
+            };
+        }
+
+        // Assigns amplitude pairs to frequencies using the supplied random source.
+        // The shared bank passes a seeded source, making raw trajectories identical
+        // across participants before their participant-specific ordering. Small-screen
         // scaling is proportional to the large-screen base rather than a separate
         // hand-picked ratio table, since it's mathematically equivalent: at the
         // minDimensions boundary, base*amplitude*(dimension/minDimension) reduces to
         // base*amplitude exactly.
-        function generateTrialAmplitudes() {
+        function generateTrialAmplitudes(random = Math.random) {
             const { width, height } = state.screen;
             const { amplitudeSets, scaleFactors, minDimensions } = FLY_PARAMS;
             const scaleY = scaleFactors.y.base * Math.min(1, height / minDimensions.height);
             const scaleX = scaleFactors.x.base * Math.min(1, width / minDimensions.width);
-            const rawX = shuffleArray(amplitudeSets.x);
-            const rawY = shuffleArray(amplitudeSets.y);
+            const rawX = shuffleArray(amplitudeSets.x, random);
+            const rawY = shuffleArray(amplitudeSets.y, random);
             return {
                 a_x: rawX.map(n => n * scaleX),
                 a_y: rawY.map(n => n * scaleY),
@@ -511,6 +536,40 @@
         // ============================================================
         let db, auth;
         let prolificId = localStorage.getItem('prolificId') || "anonymous";
+
+        const TRAJECTORY_BANK_VERSION = 1;
+        const TRAJECTORY_BANK_SEED_TEXT = `followdot-trajectory-bank-v${TRAJECTORY_BANK_VERSION}-${CONFIG.frequencyMode}`;
+        const trajectoryBankSeed = hashStringToUint32(TRAJECTORY_BANK_SEED_TEXT);
+        const trajectoryOrderSeedText = `${TRAJECTORY_BANK_SEED_TEXT}|participant:${prolificId}`;
+        const trajectoryOrderSeed = hashStringToUint32(trajectoryOrderSeedText);
+        let trajectoryBank = [];
+        let participantTrajectoryOrder = [];
+
+        function totalScheduledTrials() {
+            return CONFIG.trials.baseline + CONFIG.trials.rampUp +
+                   CONFIG.trials.hold + CONFIG.trials.washout;
+        }
+
+        function initializeTrajectoryAssignments() {
+            const count = totalScheduledTrials();
+            const bankRandom = mulberry32(trajectoryBankSeed);
+            trajectoryBank = Array.from({ length: count }, (_, bankIndex) => ({
+                bankIndex,
+                phi: generatePhi(bankRandom),
+                amplitudes: generateTrialAmplitudes(bankRandom)
+            }));
+            participantTrajectoryOrder = shuffleArray(
+                Array.from({ length: count }, (_, i) => i),
+                mulberry32(trajectoryOrderSeed)
+            );
+            console.log('Trajectory assignment', {
+                version: TRAJECTORY_BANK_VERSION,
+                bankSeed: trajectoryBankSeed,
+                participantId: prolificId,
+                orderSeed: trajectoryOrderSeed,
+                order: participantTrajectoryOrder.slice()
+            });
+        }
 
         async function initializeFirebase() {
             const { initializeFirebase: initFB } = await import('./firebaseConfig.js');
@@ -651,7 +710,7 @@
         // ============================================================
         // FLY MOVEMENT
         // ============================================================
-        function generatePhi() {
+        function generatePhi(random = Math.random) {
             // Independent per-axis phases (not shared between x[i]/y[i]) -- x and y
             // components already oscillate at different frequencies, so a shared
             // phase only ever aligned them at t=0 anyway; drawing them independently
@@ -660,9 +719,7 @@
             const makeAxisPhi = () => {
                 const arr = [];
                 for (let i = 0; i < 3; i++) {
-                    // Genuinely per-participant random (Math.random(), no shared seed) so
-                    // no two participants see the identical trajectory on the same trial.
-                    arr.push(Math.random() * 2 * Math.PI - Math.PI);
+                    arr.push(random() * 2 * Math.PI - Math.PI);
                 }
                 return arr;
             };
@@ -890,7 +947,11 @@
                 hasFeedback: state.currentHasFeedback,
                 frequencyMode: CONFIG.frequencyMode,
                 frequencies: FLY_PARAMS.frequencies,
-                amplitudesUsed: trialAmp ? { x: trialAmp.rawX, y: trialAmp.rawY } : null
+                amplitudesUsed: trialAmp ? { x: trialAmp.rawX, y: trialAmp.rawY } : null,
+                trajectoryBankVersion: TRAJECTORY_BANK_VERSION,
+                trajectoryBankSeed,
+                trajectoryOrderSeed,
+                trajectoryBankIndex: state.currentTrajectoryBankIndex
             };
             state.allDistances.push(state.currentTrialData.distances);
             state.currentTrialData = { userPositions: [], flyPositions: [], distances: [], rotationDegrees: 0 };
@@ -926,7 +987,11 @@
                 screenWidth: state.screen.width, screenHeight: state.screen.height,
                 trialConfig: CONFIG.trials, perturbationConfig: CONFIG.perturbation,
                 frequencyMode: CONFIG.frequencyMode,
-                studyCollection: STUDY_CONFIG.study.collectionName
+                studyCollection: STUDY_CONFIG.study.collectionName,
+                trajectoryBankVersion: TRAJECTORY_BANK_VERSION,
+                trajectoryBankSeed,
+                trajectoryOrderSeed,
+                trajectoryOrder: participantTrajectoryOrder
             }, { merge: true });
             const trialsCollectionRef = collection(db, experimentCollection, oderId, trialsSubcollection);
             const trialDocRef = doc(trialsCollectionRef, docName);
@@ -1015,6 +1080,7 @@
         let trialQueue = [];
         function buildTrialQueue() {
             trialQueue = [];
+            initializeTrajectoryAssignments();
             const phases = [
                 { name: "baseline", count: CONFIG.trials.baseline, next: "rampUp", msg: CONFIG.messages.baselineToRamp },
                 { name: "rampUp", count: CONFIG.trials.rampUp, next: "hold", msg: CONFIG.messages.rampToHold },
@@ -1052,9 +1118,12 @@
             updateRotationForPhase(trial.phase, trial.phaseTrialIndex);
             setMouseHandler(state.currentRotationDegrees != 0);
 
-            const phi = generatePhi();
+            const trajectoryBankIndex = participantTrajectoryOrder[trial.globalIndex];
+            const trajectory = trajectoryBank[trajectoryBankIndex];
+            state.currentTrajectoryBankIndex = trajectoryBankIndex;
+            const phi = trajectory.phi;
             state.phis.push(phi);
-            state.currentAmplitudes = generateTrialAmplitudes();
+            state.currentAmplitudes = trajectory.amplitudes;
             state.trialAmplitudes.push(state.currentAmplitudes);
             placeFlyAtStart();
 
