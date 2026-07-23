@@ -7,7 +7,7 @@
     const config = {
         study: {
             name: 'Motor Learning Study',
-            collectionName: 'experiments_v2_low_noFB_right_ccw'
+            collectionName: 'experiments_v2_high_noFB_right_cw'
         },
         eligibility: {
             minimumAge: 18,
@@ -40,8 +40,8 @@
         },
         assignment: { handToUse: 'right' },
         game: {
-            frequencyMode: 'low',
-            perturbation: { degreesPerTrial: -1, maxDegrees: -30 },
+            frequencyMode: 'high',
+            perturbation: { degreesPerTrial: 1, maxDegrees: 30 },
             trials: { baseline: 16, rampUp: 30, hold: 13, washout: 4 },
             durations: { trialLength: 30000 },
             sampling: { rate: 20, dt: 1000 },
